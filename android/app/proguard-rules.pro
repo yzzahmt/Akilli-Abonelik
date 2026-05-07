@@ -14,3 +14,11 @@
 # Sqflite
 -keep class net.sqlcipher.** { *; }
 -keep class org.sqlite.** { *; }
+
+# Google Play Core (Fixes R8 missing classes error)
+-dontwarn com.google.android.play.core.**
+-keep class com.google.android.play.core.** { *; }
+
+# Flutter R8 / ProGuard
+-dontwarn io.flutter.embedding.engine.deferredcomponents.**
+-keep class io.flutter.embedding.engine.deferredcomponents.** { *; }
