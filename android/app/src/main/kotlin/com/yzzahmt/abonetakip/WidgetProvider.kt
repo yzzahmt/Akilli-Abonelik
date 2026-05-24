@@ -1,4 +1,4 @@
-package com.example.abonetakip
+package com.yzzahmt.abonetakip
 
 import android.appwidget.AppWidgetManager
 import android.content.Context

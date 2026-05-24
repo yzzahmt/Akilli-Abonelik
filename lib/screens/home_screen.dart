@@ -242,17 +242,21 @@ class _HomeTabBody extends ConsumerWidget {
                       Container(
                         width: 32,
                         height: 32,
-                        alignment: Alignment.center,
-                        decoration: const BoxDecoration(
-                          color: AppColors.accentPurple,
-                          shape: BoxShape.circle,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.accentPurple.withOpacity(0.2),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
-                        child: Text(
-                          lang == 'TR' ? '₺' : '\$',
-                          style: GoogleFonts.inter(
-                            color: AppColors.textPrimary,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.asset(
+                            'assets/app_icon.png',
+                            fit: BoxFit.cover,
                           ),
                         ),
                       ),

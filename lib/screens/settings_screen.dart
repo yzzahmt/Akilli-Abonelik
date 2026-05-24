@@ -33,7 +33,7 @@ Netflix, Spotify, YouTube Premium ve daha fazlasını tek uygulamada takip et!
 ✅ Yenileme bildirimleri al
 ✅ Dolar bazlı abonelikleri otomatik dönüştür
 
-🔗 Hemen indir: https://play.google.com/store/apps/details?id=com.abonetakip.subs.abonetakip'''
+🔗 Hemen indir: https://play.google.com/store/apps/details?id=com.yzzahmt.abonetakip'''
         : '''📱 SubsTrack — Subscription Tracker
 
 Manage Netflix, Spotify, YouTube Premium and more in one app!
@@ -42,7 +42,7 @@ Manage Netflix, Spotify, YouTube Premium and more in one app!
 ✅ Get renewal notifications
 ✅ Auto-convert USD-based subscriptions
 
-🔗 Download now: https://play.google.com/store/apps/details?id=com.abonetakip.subs.abonetakip''';
+🔗 Download now: https://play.google.com/store/apps/details?id=com.yzzahmt.abonetakip''';
 
     SharePlus.instance.share(
       ShareParams(text: appText, subject: AppTranslations.translate(lang, 'app_title')),
@@ -728,6 +728,21 @@ Manage Netflix, Spotify, YouTube Premium and more in one app!
                       ),
                       trailing: const Icon(Icons.arrow_forward_ios_rounded, color: AppColors.textMuted, size: 14),
                       onTap: () => _shareApp(lang),
+                    ),
+                    const Divider(color: Color(0x11FFFFFF), height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.privacy_tip_outlined, color: AppColors.accentPurple),
+                      title: Text(
+                        lang == 'TR' ? 'Gizlilik Politikası' : 'Privacy Policy',
+                        style: GoogleFonts.inter(fontSize: 14, color: AppColors.textPrimary),
+                      ),
+                      trailing: const Icon(Icons.open_in_new_rounded, color: AppColors.textMuted, size: 14),
+                      onTap: () async {
+                        final url = Uri.parse('https://yazify.agency/privacy/subs-track');
+                        if (await canLaunchUrl(url)) {
+                          await launchUrl(url);
+                        }
+                      },
                     ),
                   ],
                 ),
