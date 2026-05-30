@@ -1,126 +1,215 @@
+import 'dart:io';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
-import '../models/subscription.dart';
-import 'database_service.dart';
+import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:flutter/material.dart';
 
 class NotificationService {
-  static final NotificationService instance = NotificationService._init();
-  final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
+  static final _plugin = FlutterLocalNotificationsPlugin();
+  static bool _initialized = false;
 
-  NotificationService._init();
+  static Future init() async {
+    if (_initialized) return;
+    tz.initializeTimeZones();
+    tz.setLocalLocation(tz.getLocation('Europe/Istanbul'));
+    const android = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const ios = DarwinInitializationSettings(
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+    );
+    await _plugin.initialize(
+      const InitializationSettings(android: android, iOS: ios),
+    );
+    _initialized = true;
+  }
 
-  Future<void> init() async {
-    try {
-      tz.initializeTimeZones();
+  static Future<bool> requestPermissionsWithRationale(BuildContext context) async {
+    if (!context.mounted) return false;
 
-      const AndroidInitializationSettings initializationSettingsAndroid =
-          AndroidInitializationSettings('@mipmap/ic_launcher');
-
-      const DarwinInitializationSettings initializationSettingsDarwin =
-          DarwinInitializationSettings(
-        requestAlertPermission: true,
-        requestBadgePermission: true,
-        requestSoundPermission: true,
-      );
-
-      const InitializationSettings initializationSettings = InitializationSettings(
-        android: initializationSettingsAndroid,
-        iOS: initializationSettingsDarwin,
-      );
-
-      await _plugin.initialize(
-        settings: initializationSettings,
-        onDidReceiveNotificationResponse: (NotificationResponse response) async {},
-      );
-
-      // Request notification permissions explicitly for Android 13+
-      await _plugin
-          .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
-          ?.requestNotificationsPermission();
-
-      // Reschedule all active notifications silently
-      await rescheduleAllActiveNotifications();
-    } catch (_) {
-      // Silently ignore – permissions may not be granted yet
+    // Önce izin verilmiş mi kontrol edelim
+    bool isGranted = false;
+    if (Platform.isAndroid) {
+      final androidImplementation = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      final hasPermission = await androidImplementation?.areNotificationsEnabled();
+      if (hasPermission == true) return true;
     }
+
+    if (!context.mounted) return false;
+
+    final agreed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF141829),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Bildirim İzni', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: const Text(
+          'SubsTrack, abonelik yenileme tarihlerinden önce sizi bilgilendirmek için bildirim göndermek istiyor.\n\n'
+          'Bildirimler yalnızca abonelik hatırlatmaları ve aylık özet için kullanılacaktır.',
+          style: TextStyle(color: Color(0xFFB0B8D1), height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Hayır', style: TextStyle(color: Color(0xFF8892A4))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6C5CE7)),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('İzin Ver'),
+          ),
+        ],
+      ),
+    );
+
+    if (agreed != true) return false;
+
+    if (Platform.isAndroid) {
+      final androidImplementation = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      final result = await androidImplementation?.requestNotificationsPermission();
+      isGranted = result ?? false;
+      
+      // Request Exact Alarm as well silently if notifications are granted
+      if (isGranted) {
+        await androidImplementation?.requestExactAlarmsPermission();
+      }
+    } else if (Platform.isIOS) {
+      final iosImplementation = _plugin.resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
+      final result = await iosImplementation?.requestPermissions(alert: true, badge: true, sound: true);
+      isGranted = result ?? false;
+    }
+    
+    return isGranted;
   }
 
-  Future<void> rescheduleAllActiveNotifications() async {
+  static Future scheduleReminder({
+    required int id,
+    required String name,
+    required double amount,
+    required String currency,
+    required DateTime renewalDate,
+    int daysBefore = 1,
+  }) async {
+    await init();
+    final notifDate = renewalDate.subtract(Duration(days: daysBefore));
+    final now = DateTime.now();
+    if (notifDate.isBefore(now)) return;
+
+    final tzDate = tz.TZDateTime(
+      tz.local,
+      notifDate.year, notifDate.month, notifDate.day, 9, 0,
+    );
+
     try {
-      final activeSubs = await DBService.instance.getAllSubscriptions();
-      await _plugin.cancelAll();
-      for (var sub in activeSubs) {
-        if (sub.isActive && sub.id != null) {
-          await scheduleRenewalNotification(sub);
-        }
-      }
-    } catch (_) {}
-  }
-
-  Future<void> scheduleRenewalNotification(Subscription sub) async {
-    if (sub.id == null || !sub.isActive) return;
-
-    try {
-      final now = DateTime.now();
-      final notifyBefore = sub.notifyDaysBefore > 0 ? sub.notifyDaysBefore : 1;
-
-      // Calculate scheduled day (renewalDay - notifyBefore), clamped to valid range
-      int scheduleDay = sub.renewalDay - notifyBefore;
-      if (scheduleDay < 1) scheduleDay = 1;
-
-      DateTime scheduledDate = DateTime(now.year, now.month, scheduleDay, 10, 0);
-
-      if (scheduledDate.isBefore(now)) {
-        int nextMonth = now.month + 1;
-        int nextYear = now.year;
-        if (nextMonth > 12) {
-          nextMonth = 1;
-          nextYear++;
-        }
-        scheduledDate = DateTime(nextYear, nextMonth, scheduleDay, 10, 0);
-      }
-
-      final scheduledTZDate = tz.TZDateTime.from(scheduledDate, tz.UTC);
-
-      const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-        'renewal_channel',
-        'Yenileme Hatırlatıcıları',
-        channelDescription: 'Abonelik yenileme tarihlerinden önce gönderilen hatırlatıcılar.',
-        importance: Importance.max,
-        priority: Priority.high,
-      );
-
-      const DarwinNotificationDetails darwinDetails = DarwinNotificationDetails();
-
-      const NotificationDetails notificationDetails = NotificationDetails(
-        android: androidDetails,
-        iOS: darwinDetails,
-      );
-
       await _plugin.zonedSchedule(
-        id: sub.id!,
-        title: '⏰ Yaklaşan Yenileme',
-        body: '${sub.name} yakında yenileniyor — ₺${sub.priceInTL.toStringAsFixed(0)} çekilecek',
-        scheduledDate: scheduledTZDate,
-        notificationDetails: notificationDetails,
-        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        id,
+        'Abonelik Yenileniyor: $name',
+        '$daysBefore gun sonra $amount $currency odeme yapilacak.',
+        tzDate,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'substrack_reminders', 'Abonelik Hatirlatmalari',
+            channelDescription: 'Yaklasan abonelik odeme bildirimleri',
+            importance: Importance.high, priority: Priority.high,
+            icon: '@mipmap/ic_launcher',
+            color: Color(0xFF6C5CE7),
+          ),
+          iOS: DarwinNotificationDetails(presentAlert: true, presentBadge: true, presentSound: true),
+        ),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
       );
-    } catch (_) {
-      // Skip silently – exact alarms may not be permitted on all devices
+    } catch (e) {
+      // Fallback to inexact scheduling if exact alarm permission is denied
+      await _plugin.zonedSchedule(
+        id,
+        'Abonelik Yenileniyor: $name',
+        '$daysBefore gun sonra $amount $currency odeme yapilacak.',
+        tzDate,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'substrack_reminders', 'Abonelik Hatirlatmalari',
+            channelDescription: 'Yaklasan abonelik odeme bildirimleri',
+            importance: Importance.high, priority: Priority.high,
+            icon: '@mipmap/ic_launcher',
+            color: Color(0xFF6C5CE7),
+          ),
+          iOS: DarwinNotificationDetails(presentAlert: true, presentBadge: true, presentSound: true),
+        ),
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+      );
     }
   }
 
-  Future<void> cancelNotification(int id) async {
-    try {
-      await _plugin.cancel(id: id);
-    } catch (_) {}
+  static Future showTestNotification() async {
+    await init();
+    await _plugin.show(
+      0,
+      'Test Bildirimi',
+      'SubsTrack bildirimleri duzgun calisiyor!',
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'substrack_test', 'Test',
+          importance: Importance.high, priority: Priority.high,
+          icon: '@mipmap/ic_launcher',
+          color: Color(0xFF6C5CE7),
+        ),
+      ),
+    );
   }
 
-  Future<void> cancelAllNotifications() async {
+  static Future cancel(int id) async => _plugin.cancel(id);
+  static Future cancelAll() async => _plugin.cancelAll();
+
+  static Future scheduleMonthlySummary() async {
+    await init();
+    final now = DateTime.now();
+    DateTime nextMonth = DateTime(now.year, now.month + 1, 1, 10, 0); // Next month's 1st day at 10:00 AM
+
+    final tzDate = tz.TZDateTime.from(nextMonth, tz.local);
+
     try {
-      await _plugin.cancelAll();
-    } catch (_) {}
+      await _plugin.zonedSchedule(
+        99999, // Static ID for monthly summary
+        'Aylik Ozetiniz Hazir',
+        'Bu ayki toplam abonelik harcamalarinizi goruntuleyin.',
+        tzDate,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'substrack_summary', 'Aylik Ozetler',
+            channelDescription: 'Aylik abonelik harcama ozetleri',
+            importance: Importance.defaultImportance, priority: Priority.defaultPriority,
+            icon: '@mipmap/ic_launcher',
+            color: Color(0xFF6C5CE7),
+          ),
+          iOS: DarwinNotificationDetails(presentAlert: true, presentBadge: true, presentSound: true),
+        ),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.dayOfMonthAndTime,
+      );
+    } catch (e) {
+      await _plugin.zonedSchedule(
+        99999,
+        'Aylik Ozetiniz Hazir',
+        'Bu ayki toplam abonelik harcamalarinizi goruntuleyin.',
+        tzDate,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'substrack_summary', 'Aylik Ozetler',
+            channelDescription: 'Aylik abonelik harcama ozetleri',
+            importance: Importance.defaultImportance, priority: Priority.defaultPriority,
+            icon: '@mipmap/ic_launcher',
+            color: Color(0xFF6C5CE7),
+          ),
+          iOS: DarwinNotificationDetails(presentAlert: true, presentBadge: true, presentSound: true),
+        ),
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.dayOfMonthAndTime,
+      );
+    }
   }
 }

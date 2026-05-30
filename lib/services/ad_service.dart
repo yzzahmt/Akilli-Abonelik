@@ -12,7 +12,8 @@ class AdService {
   static const String rewardedAdUnitId = 'ca-app-pub-6003638370658344/9317220459';
 
   static InterstitialAd? _interstitialAd;
-  static int _addedSubsCount = 0; // Show interstitial every 3 additions
+  static int _addedSubsCount = 0; // Show interstitial every 2 additions
+  static int _screenChangeCount = 0; // Show interstitial every 3 screen changes
 
   RewardedAd? _rewardedAd;
   int _rewardedWatchCount = 0; // track how many rewarded ads watched
@@ -53,9 +54,18 @@ class AdService {
     );
   }
 
-  static void onSubscriptionAdded() {
+  static void onSubscriptionAdded(bool isPremium) {
+    if (isPremium) return;
     _addedSubsCount++;
-    if (_addedSubsCount % 3 == 0) {
+    if (_addedSubsCount % 2 == 0) {
+      showInterstitial();
+    }
+  }
+
+  static void onScreenChanged(bool isPremium) {
+    if (isPremium) return;
+    _screenChangeCount++;
+    if (_screenChangeCount % 4 == 0) {
       showInterstitial();
     }
   }

@@ -72,7 +72,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     }
   }
 
-  void _showDayBottomSheet(BuildContext context, DateTime day, List<Subscription> subs, String lang) {
+  void _showDayBottomSheet(
+    BuildContext context,
+    DateTime day,
+    List<Subscription> subs,
+    String lang,
+  ) {
     final dateFormat = DateFormat('dd MMMM yyyy', lang == 'TR' ? 'tr' : 'en');
     final notifier = ref.read(subscriptionProvider.notifier);
     showModalBottomSheet(
@@ -96,7 +101,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                AppTranslations.translate(lang, 'payments_on').replaceAll('{date}', dateFormat.format(day)),
+                AppTranslations.translate(
+                  lang,
+                  'payments_on',
+                ).replaceAll('{date}', dateFormat.format(day)),
                 style: GoogleFonts.inter(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -107,7 +115,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               if (subs.isEmpty)
                 Text(
                   AppTranslations.translate(lang, 'no_payments_today'),
-                  style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 13),
+                  style: GoogleFonts.inter(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                  ),
                 )
               else
                 Flexible(
@@ -124,17 +135,25 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                             Navigator.of(context).pop();
                             Navigator.of(context).push(
                               MaterialPageRoute(
-                                builder: (context) => AddSubscriptionScreen(subscriptionToEdit: sub),
+                                builder: (context) => AddSubscriptionScreen(
+                                  subscriptionToEdit: sub,
+                                ),
                               ),
                             );
                           },
                           borderRadius: BorderRadius.circular(14),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 12,
+                            ),
                             decoration: BoxDecoration(
                               color: AppColors.surface1,
                               borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: AppColors.borderSubtle, width: 1),
+                              border: Border.all(
+                                color: AppColors.borderSubtle,
+                                width: 1,
+                              ),
                             ),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -147,7 +166,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                                     ),
                                     const SizedBox(width: 12),
                                     Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           sub.name,
@@ -249,12 +269,16 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                       _selectedDay = selectedDay;
                       _focusedDay = focusedDay;
                     });
-                    final subs = _getSubsForDay(selectedDay, subState.subscriptions);
+                    final subs = _getSubsForDay(
+                      selectedDay,
+                      subState.subscriptions,
+                    );
                     _showDayBottomSheet(context, selectedDay, subs, lang);
                   },
                   calendarFormat: CalendarFormat.month,
                   startingDayOfWeek: StartingDayOfWeek.monday,
-                  eventLoader: (day) => _getSubsForDay(day, subState.subscriptions),
+                  eventLoader: (day) =>
+                      _getSubsForDay(day, subState.subscriptions),
                   calendarBuilders: CalendarBuilders(
                     markerBuilder: (context, day, events) {
                       if (events.isEmpty) return const SizedBox.shrink();
@@ -266,7 +290,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                             height: 5,
                             margin: const EdgeInsets.symmetric(horizontal: 1),
                             decoration: BoxDecoration(
-                              color: _getCategoryColor((sub as Subscription).category),
+                              color: _getCategoryColor(
+                                (sub as Subscription).category,
+                              ),
                               shape: BoxShape.circle,
                             ),
                           );
@@ -282,26 +308,47 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                       fontWeight: FontWeight.bold,
                       fontSize: 15,
                     ),
-                    leftChevronIcon: const Icon(Icons.chevron_left, color: AppColors.textSecondary),
-                    rightChevronIcon: const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+                    leftChevronIcon: const Icon(
+                      Icons.chevron_left,
+                      color: AppColors.textSecondary,
+                    ),
+                    rightChevronIcon: const Icon(
+                      Icons.chevron_right,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                   calendarStyle: CalendarStyle(
-                    defaultTextStyle: GoogleFonts.inter(color: AppColors.textPrimary),
-                    weekendTextStyle: GoogleFonts.inter(color: AppColors.expensiveRed),
-                    outsideTextStyle: GoogleFonts.inter(color: AppColors.textMuted),
+                    defaultTextStyle: GoogleFonts.inter(
+                      color: AppColors.textPrimary,
+                    ),
+                    weekendTextStyle: GoogleFonts.inter(
+                      color: AppColors.expensiveRed,
+                    ),
+                    outsideTextStyle: GoogleFonts.inter(
+                      color: AppColors.textMuted,
+                    ),
                     selectedDecoration: const BoxDecoration(
                       color: AppColors.accentPurple,
                       shape: BoxShape.circle,
                     ),
                     todayDecoration: BoxDecoration(
-                      color: AppColors.accentPurple.withOpacity(0.25),
+                      color: AppColors.accentPurple.withValues(alpha: 0.25),
                       shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.accentPurple, width: 1),
+                      border: Border.all(
+                        color: AppColors.accentPurple,
+                        width: 1,
+                      ),
                     ),
                   ),
                   daysOfWeekStyle: DaysOfWeekStyle(
-                    weekdayStyle: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 12),
-                    weekendStyle: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 12),
+                    weekdayStyle: GoogleFonts.inter(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
+                    weekendStyle: GoogleFonts.inter(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
                   ),
                 ),
               ).animate().fade(duration: 400.ms),
@@ -345,24 +392,37 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                           onTap: () {
                             Navigator.of(context).push(
                               MaterialPageRoute(
-                                builder: (context) => AddSubscriptionScreen(subscriptionToEdit: sub),
+                                builder: (context) => AddSubscriptionScreen(
+                                  subscriptionToEdit: sub,
+                                ),
                               ),
                             );
                           },
                           borderRadius: BorderRadius.circular(16),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 12,
+                            ),
                             decoration: BoxDecoration(
                               color: AppColors.surface1,
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: AppColors.borderSubtle, width: 1.2),
+                              border: Border.all(
+                                color: AppColors.borderSubtle,
+                                width: 1.2,
+                              ),
                             ),
                             child: Row(
                               children: [
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: AppColors.accentPurple.withOpacity(0.12),
+                                    color: AppColors.accentPurple.withValues(alpha: 
+                                      0.12,
+                                    ),
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Column(
@@ -376,7 +436,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                                         ),
                                       ),
                                       Text(
-                                        monthFormat.format(nextDate).toUpperCase(),
+                                        monthFormat
+                                            .format(nextDate)
+                                            .toUpperCase(),
                                         style: GoogleFonts.inter(
                                           fontSize: 11,
                                           fontWeight: FontWeight.w600,
@@ -389,7 +451,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                                 const SizedBox(width: 14),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         sub.name,

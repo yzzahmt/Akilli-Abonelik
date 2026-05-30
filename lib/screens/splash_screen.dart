@@ -1,280 +1,354 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../constants/app_colors.dart';
+import 'kvkk_screen.dart';
+import 'onboarding_screen.dart';
+import 'home_screen.dart';
+import 'dart:math' as math;
 import '../services/database_service.dart';
 import '../services/notification_service.dart';
 import '../services/ad_service.dart';
 
-class PremiumSplashScreen extends StatefulWidget {
-  final Function(bool isKvkkAccepted) onInitializationComplete;
-
-  const PremiumSplashScreen({
-    super.key,
-    required this.onInitializationComplete,
-  });
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
 
   @override
-  State<PremiumSplashScreen> createState() => _PremiumSplashScreenState();
+  State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _PremiumSplashScreenState extends State<PremiumSplashScreen> with SingleTickerProviderStateMixin {
-  bool _isKvkkAccepted = false;
-  late AnimationController _exitController;
+class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMixin {
+  late AnimationController _sequenceController;
+  late AnimationController _rotationController;
 
   @override
   void initState() {
     super.initState();
-    _exitController = AnimationController(
+    _rotationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(seconds: 2),
+    )..repeat();
+
+    _sequenceController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 4200),
     );
-    _initializeApp();
+
+    _initServicesAndPlay();
+  }
+
+  Future<void> _initServicesAndPlay() async {
+    try {
+      await Future.wait([
+        DBService.instance.database,
+        NotificationService.init(),
+        AdService.init(),
+      ]);
+    } catch (e) {
+      debugPrint('Splash screen initialization error: \$e');
+    }
+
+    await _sequenceController.forward();
+    _navigate();
+  }
+
+  void _navigate() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bool kvkk = prefs.getBool('kvkk_accepted') ?? false;
+    final bool onboarding = prefs.getBool('onboarding_done') ?? false;
+
+    if (!mounted) return;
+
+    if (!kvkk) {
+      Navigator.pushReplacement(context, PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => const KvkkScreen(),
+        transitionDuration: Duration.zero,
+      ));
+    } else if (!onboarding) {
+      Navigator.pushReplacement(context, PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => OnboardingScreen(onComplete: () {
+          Navigator.pushReplacement(context, PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) => const HomeScreen(),
+            transitionDuration: Duration.zero,
+          ));
+        }),
+        transitionDuration: Duration.zero,
+      ));
+    } else {
+      Navigator.pushReplacement(context, PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => const HomeScreen(),
+        transitionDuration: Duration.zero,
+      ));
+    }
   }
 
   @override
   void dispose() {
-    _exitController.dispose();
+    _sequenceController.dispose();
+    _rotationController.dispose();
     super.dispose();
-  }
-
-  Future<void> _initializeApp() async {
-    final startTime = DateTime.now();
-
-    try {
-      // Run initialization tasks in parallel
-      await Future.wait([
-        DBService.instance.database,
-        NotificationService.instance.init(),
-        AdService.init(),
-      ]);
-
-      // Check KVKK status
-      final prefs = await SharedPreferences.getInstance();
-      _isKvkkAccepted = prefs.getBool('is_kvkk_accepted') ?? false;
-    } catch (e) {
-      debugPrint('Splash screen initialization error: $e');
-    }
-
-    final elapsedTime = DateTime.now().difference(startTime);
-    const minDuration = Duration(milliseconds: 2800);
-
-    // Enforce minimum splash screen duration for premium animation feel
-    if (elapsedTime < minDuration) {
-      await Future.delayed(minDuration - elapsedTime);
-    }
-
-    if (mounted) {
-      await _exitController.forward();
-      widget.onInitializationComplete(_isKvkkAccepted);
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: Tween<double>(begin: 1.0, end: 0.0).animate(
-        CurvedAnimation(
-          parent: _exitController,
-          curve: Curves.easeInOutCubic,
-        ),
-      ),
-      child: ScaleTransition(
-        scale: Tween<double>(begin: 1.0, end: 1.05).animate(
-          CurvedAnimation(
-            parent: _exitController,
-            curve: Curves.easeInOutCubic,
-          ),
-        ),
-        child: Scaffold(
-          backgroundColor: AppColors.background,
-          body: Stack(
-            children: [
-              // Premium Gradient Background
-              Positioned.fill(
-                child: Container(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Color(0xFF060913),
-                        Color(0xFF0B1123),
-                        Color(0xFF080C18),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+    return AnimatedBuilder(
+      animation: _sequenceController,
+      builder: (context, child) {
+        final time = _sequenceController.value * 4200;
 
-              // Glowing Ambient Light in the Center
-              Center(
-                child: Container(
-                  width: 300,
-                  height: 300,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.accentPurple.withOpacity(0.08),
-                  ),
-                  child: Center(
-                    child: Container(
-                      width: 150,
-                      height: 150,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: const Color(0xFFFFD700).withOpacity(0.03),
-                      ),
-                    ),
-                  ),
-                ).animate(onPlay: (controller) => controller.repeat(reverse: true))
-                 .scaleXY(duration: 2.seconds, begin: 0.8, end: 1.2, curve: Curves.easeInOutSine),
-              ),
+        // Adım 2: 400-700ms bg fade in & light point appear
+        final bgOpacity = _getVal(time, 400, 700, 0.0, 1.0);
+        final lightPointOpacity = _getVal(time, 400, 700, 0.0, 1.0);
 
-              // Main Content
-              Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Logo Container with Glassmorphic Border and Glow
-                    Container(
-                      padding: const EdgeInsets.all(3),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(32),
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Colors.white.withOpacity(0.15),
-                            AppColors.accentPurple.withOpacity(0.4),
-                            const Color(0xFFFFD700).withOpacity(0.2),
+        // Adım 3: 700-1200ms grow to 60px circle
+        final baseSize = _getVal(time, 700, 1200, 4.0, 120.0);
+        final baseGlow = _getVal(time, 700, 1200, 0.0, 40.0);
+
+        // Adım 4: 1200-1800ms morph to rounded square
+        final radius = _getVal(time, 1200, 1800, 60.0, 24.0);
+        final sScale = _getVal(time, 1200, 1800, 0.0, 1.0);
+
+        // Adım 5: 1800-2400ms logo crossfade
+        final logoOpacity = _getVal(time, 1800, 2400, 0.0, 1.0);
+        
+        // Adım 6: 2400-3000ms "SubsTrack" slides down
+        final titleOpacity = _getVal(time, 2400, 3000, 0.0, 1.0);
+        final titleOffset = _getVal(time, 2400, 3000, -20.0, 0.0);
+
+        // Adım 7: 3000-3400ms subtitle fade in, YAZIFY letter spacing
+        final subtitleOpacity = _getVal(time, 3000, 3400, 0.0, 1.0);
+        final yazifySpacing = _getVal(time, 3000, 3400, 0.0, 8.0);
+        final yazifyOpacity = _getVal(time, 3000, 3400, 0.0, 1.0);
+
+        // Adım 8: 3400-3800ms purple bar fill
+        final barFill = _getVal(time, 3400, 3800, 0.0, 1.0);
+
+        // Adım 9: 3800-4200ms slide out
+        final screenSlide = _getVal(time, 3800, 4200, 0.0, -MediaQuery.of(context).size.height);
+
+        return Transform.translate(
+          offset: Offset(0, screenSlide),
+          child: Scaffold(
+            backgroundColor: Colors.black,
+            body: Stack(
+              children: [
+                if (bgOpacity > 0)
+                  Opacity(
+                    opacity: bgOpacity,
+                    child: Container(color: const Color(0xFF0A0D1A)),
+                  ),
+
+                Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 130,
+                        height: 130,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            if (baseSize > 0)
+                              Container(
+                                width: baseSize,
+                                height: baseSize,
+                                decoration: BoxDecoration(
+                                  color: logoOpacity < 1.0 ? const Color(0xFF6C5CE7) : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(radius),
+                                  boxShadow: logoOpacity < 1.0 && baseGlow > 0 ? [
+                                    BoxShadow(
+                                      color: const Color(0xFF6C5CE7).withValues(alpha: 0.8),
+                                      blurRadius: baseGlow,
+                                      spreadRadius: baseGlow / 4,
+                                    )
+                                  ] : null,
+                                ),
+                                child: Center(
+                                  child: Transform.scale(
+                                    scale: sScale,
+                                    child: Opacity(
+                                      opacity: 1.0 - logoOpacity,
+                                      child: const Text(
+                                        'S',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 32,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            
+                            if (lightPointOpacity > 0 && baseSize < 10)
+                              Container(
+                                width: 4,
+                                height: 4,
+                                decoration: const BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+
+                            if (logoOpacity > 0)
+                              Opacity(
+                                opacity: logoOpacity,
+                                child: Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    AnimatedBuilder(
+                                      animation: _rotationController,
+                                      builder: (context, child) {
+                                        return Transform.rotate(
+                                          angle: _rotationController.value * 2 * math.pi,
+                                          child: CustomPaint(
+                                            size: const Size(124, 124),
+                                            painter: GradientBorderPainter(
+                                              radius: 24,
+                                              strokeWidth: 3,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                    Container(
+                                      width: 120,
+                                      height: 120,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(24),
+                                        color: Colors.black,
+                                      ),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(24),
+                                        child: Image.asset(
+                                          'assets/app_icon.png',
+                                          fit: BoxFit.cover,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                           ],
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.accentPurple.withOpacity(0.25),
-                            blurRadius: 30,
-                            spreadRadius: 2,
-                            offset: const Offset(0, 8),
-                          ),
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.5),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
                       ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(29),
-                        child: Image.asset(
-                          'assets/app_icon.png',
-                          width: 120,
-                          height: 120,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    )
-                        .animate()
-                        .fade(duration: 800.ms, curve: Curves.easeOut)
-                        .scaleXY(
-                          begin: 0.5,
-                          end: 1.0,
-                          duration: 1000.ms,
-                          curve: Curves.elasticOut,
-                        )
-                        .then(delay: 200.ms)
-                        // Metallic Shine Sweep
-                        .shimmer(
-                          duration: 1800.ms,
-                          color: Colors.white.withOpacity(0.25),
-                          angle: 45,
-                        ),
-
-                    const SizedBox(height: 32),
-
-                    // App Title
-                    Text(
-                      'SubsTrack',
-                      style: GoogleFonts.orbitron(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 4,
-                        color: AppColors.textPrimary,
-                      ),
-                    )
-                        .animate()
-                        .fade(delay: 500.ms, duration: 600.ms)
-                        .slideY(begin: 0.2, end: 0.0, curve: Curves.easeOutCubic)
-                        .then(delay: 100.ms)
-                        // Elegant Title Shimmer
-                        .shimmer(
-                          duration: 1200.ms,
-                          color: const Color(0xFFFFD700).withOpacity(0.3),
-                        ),
-
-                    const SizedBox(height: 10),
-
-                    // Subtitle
-                    Text(
-                      'Abonelik Takip Asistanı',
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: 2,
-                        color: AppColors.textSecondary,
-                      ),
-                    )
-                        .animate()
-                        .fade(delay: 850.ms, duration: 600.ms)
-                        .slideY(begin: 0.3, end: 0.0, curve: Curves.easeOutCubic),
-                  ],
-                ),
-              ),
-
-              // Premium Branding / Loading indicator at bottom
-              Positioned(
-                bottom: 48,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Sleek customized line progress indicator
-                      SizedBox(
-                        width: 80,
-                        height: 2,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(1),
-                          child: const LinearProgressIndicator(
-                            backgroundColor: Color(0x11FFFFFF),
-                            valueColor: AlwaysStoppedAnimation<Color>(AppColors.accentPurple),
+                      const SizedBox(height: 24),
+                      if (time >= 2400)
+                        Transform.translate(
+                          offset: Offset(0, titleOffset),
+                          child: Opacity(
+                            opacity: titleOpacity,
+                            child: Text(
+                              'SubsTrack',
+                              style: GoogleFonts.inter(
+                                fontSize: 32,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
                           ),
                         ),
-                      )
-                          .animate()
-                          .fade(delay: 1200.ms, duration: 500.ms),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Y A Z I F Y',
-                        style: GoogleFonts.orbitron(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 3,
-                          color: AppColors.textSecondary.withOpacity(0.5),
+                      const SizedBox(height: 8),
+                      if (time >= 3000)
+                        Opacity(
+                          opacity: subtitleOpacity,
+                          child: Text(
+                            'Abonelik Takip Asistanı',
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w400,
+                              color: const Color(0xFFB0B3BE),
+                            ),
+                          ),
                         ),
-                      )
-                          .animate()
-                          .fade(delay: 1400.ms, duration: 500.ms),
                     ],
                   ),
                 ),
-              ),
-            ],
+                if (time >= 3000)
+                  Positioned(
+                    bottom: 40,
+                    left: 0,
+                    right: 0,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Opacity(
+                          opacity: yazifyOpacity,
+                          child: Text(
+                            'YAZIFY',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                              letterSpacing: yazifySpacing,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        if (time >= 3400)
+                          Container(
+                            width: 120,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                            alignment: Alignment.centerLeft,
+                            child: FractionallySizedBox(
+                              widthFactor: barFill,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF6C5CE7),
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
+
+  double _getVal(double time, double startMs, double endMs, double startVal, double endVal) {
+    if (time <= startMs) return startVal;
+    if (time >= endMs) return endVal;
+    final t = (time - startMs) / (endMs - startMs);
+    final curve = Curves.easeInOut.transform(t);
+    return startVal + (endVal - startVal) * curve;
+  }
+}
+
+class GradientBorderPainter extends CustomPainter {
+  final double radius;
+  final double strokeWidth;
+
+  GradientBorderPainter({required this.radius, required this.strokeWidth});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Rect.fromLTWH(0, 0, size.width, size.height);
+    final rrect = RRect.fromRectAndRadius(rect, Radius.circular(radius));
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..shader = SweepGradient(
+        colors: const [
+          Color(0xFF6C5CE7),
+          Color(0x006C5CE7),
+          Color(0xFF6C5CE7),
+        ],
+        stops: const [0.0, 0.5, 1.0],
+      ).createShader(rect);
+    canvas.drawRRect(rrect, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }

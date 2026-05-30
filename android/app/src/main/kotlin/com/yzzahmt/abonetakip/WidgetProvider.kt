@@ -12,6 +12,11 @@ class WidgetProvider : HomeWidgetProvider() {
         appWidgetIds: IntArray,
         widgetData: SharedPreferences
     ) {
-        // empty to prevent crash on update
+        val views = android.widget.RemoteViews(context.packageName, R.layout.widget_layout)
+
+        val totalAmount = widgetData.getString("monthly_total", "0")
+        views.setTextViewText(R.id.widget_amount, "₺$totalAmount")
+
+        appWidgetManager.updateAppWidget(appWidgetIds, views)
     }
 }

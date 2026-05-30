@@ -138,6 +138,12 @@ class _ProUnlockScreenState extends ConsumerState<ProUnlockScreen> {
                       children: [
                         _buildFeatureRow('🚫', 'Reklamları Tamamen Kaldır'),
                         const SizedBox(height: 16),
+                        _buildFeatureRow('🎨', 'Özelleştirilebilir Ana Ekran Kartları'),
+                        const SizedBox(height: 16),
+                        _buildFeatureRow('📈', 'Gelişmiş Kâr/Zarar Grafikleri'),
+                        const SizedBox(height: 16),
+                        _buildFeatureRow('🌗', 'Koyu / Açık Tema Seçimi'),
+                        const SizedBox(height: 16),
                         _buildFeatureRow('📊', 'CSV Dışa Aktar'),
                         const SizedBox(height: 16),
                         _buildFeatureRow('📅', 'Takvime Aktar'),
@@ -204,6 +210,31 @@ class _ProUnlockScreenState extends ConsumerState<ProUnlockScreen> {
                           ),
                   ),
                 ),
+              const SizedBox(height: 16),
+              if (!isDone)
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.surface2,
+                      foregroundColor: const Color(0xFFFFD700),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: const BorderSide(color: Color(0xFFFFD700)),
+                      ),
+                      elevation: 0,
+                    ),
+                    onPressed: _buyPremium,
+                    child: Text(
+                      'Sınırsız Premium Satın Al',
+                      style: GoogleFonts.inter(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
               const SizedBox(height: 24),
             ],
           ),
@@ -261,5 +292,25 @@ class _ProUnlockScreenState extends ConsumerState<ProUnlockScreen> {
         );
       },
     );
+  }
+
+  Future<void> _buyPremium() async {
+    // Burada RevenueCat satın alma işlemi yapılacaktır.
+    // Lütfen main.dart içindeki Purchases.configure adımını tamamlayın.
+    try {
+      // Offerings offerings = await Purchases.getOfferings();
+      // if (offerings.current != null && offerings.current!.availablePackages.isNotEmpty) {
+      //   CustomerInfo customerInfo = await Purchases.purchasePackage(offerings.current!.availablePackages[0]);
+      //   if (customerInfo.entitlements.all["pro"]?.isActive == true) {
+      //     ref.read(isPremiumProvider.notifier).togglePremium(true);
+      //     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('🎉 Sınırsız Premium aktifleştirildi!')));
+      //   }
+      // }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Google Play entegrasyonu (RevenueCat) kodları eklendi. API Key girmeniz bekleniyor.')),
+      );
+    } catch (e) {
+      // print("Satın alma hatası: $e");
+    }
   }
 }

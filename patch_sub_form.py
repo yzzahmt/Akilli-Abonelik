@@ -1,414 +1,9 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import '../providers/subscription_provider.dart';
-import '../constants/app_colors.dart';
-import '../constants/service_list.dart';
-import '../models/subscription.dart';
-import '../providers/settings_provider.dart';
-import '../services/activity_tracker.dart';
-import '../utils/translations.dart';
+import re
 
-class AddSubscriptionScreen extends ConsumerStatefulWidget {
-  final Subscription? subscriptionToEdit;
+with open('lib/screens/add_subscription_screen.dart', 'r', encoding='utf-8') as f:
+    code = f.read()
 
-  const AddSubscriptionScreen({super.key, this.subscriptionToEdit});
-
-  @override
-  ConsumerState<AddSubscriptionScreen> createState() => _AddSubscriptionScreenState();
-}
-
-class _AddSubscriptionScreenState extends ConsumerState<AddSubscriptionScreen> {
-  String _searchQuery = '';
-  String _selectedCategory = 'Tümü';
-
-  final List<String> _categories = [
-    'Tümü',
-    'Video',
-    'Müzik',
-    'Yapay Zeka',
-    'Bulut',
-    'Oyun',
-    'Eğitim',
-    'Spor',
-    'Üretkenlik',
-    'Güvenlik',
-    'Diğer',
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.subscriptionToEdit != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showSubscriptionBottomSheet(
-          context: context,
-          presetName: widget.subscriptionToEdit!.name,
-          presetEmoji: _getEmojiForService(widget.subscriptionToEdit!.name),
-          presetPrice: widget.subscriptionToEdit!.price,
-          presetCategory: widget.subscriptionToEdit!.category,
-          presetCurrency: widget.subscriptionToEdit!.currency,
-          presetIsUsd: widget.subscriptionToEdit!.currency == 'USD',
-          editSub: widget.subscriptionToEdit,
-        );
-      });
-    }
-  }
-
-  String _getEmojiForService(String name) {
-    for (var preset in AppConstants.presetSubscriptions) {
-      if (preset.name.toLowerCase() == name.toLowerCase()) {
-        return preset.emoji;
-      }
-    }
-    return '➕';
-  }
-
-  List<PresetSubscription> _getFilteredServices() {
-    return AppConstants.presetSubscriptions.where((preset) {
-      final matchesSearch = preset.name.toLowerCase().contains(_searchQuery.toLowerCase());
-      if (!matchesSearch) return false;
-
-      if (_selectedCategory == 'Tümü') return true;
-      if (_selectedCategory == 'AI' && preset.category == 'Yapay Zeka') return true;
-      return preset.category.toLowerCase() == _selectedCategory.toLowerCase();
-    }).toList();
-  }
-
-  void _showSubscriptionBottomSheet({
-    required BuildContext context,
-    required String presetName,
-    required String presetEmoji,
-    required double presetPrice,
-    required String presetCategory,
-    required String presetCurrency,
-    required bool presetIsUsd,
-    Subscription? editSub,
-  }) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return _SubscriptionFormBottomSheet(
-          presetName: presetName,
-          presetEmoji: presetEmoji,
-          presetPrice: presetPrice,
-          presetCategory: presetCategory,
-          presetCurrency: presetCurrency,
-          presetIsUsd: presetIsUsd,
-          editSub: editSub,
-        );
-      },
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final filteredPresets = _getFilteredServices();
-    final lang = ref.watch(languageProvider);
-
-    final Map<String, String> categoriesMap = {
-      'Tümü': AppTranslations.translate(lang, 'all'),
-      'Video': AppTranslations.translate(lang, 'video'),
-      'Müzik': AppTranslations.translate(lang, 'music'),
-      'Yapay Zeka': AppTranslations.translate(lang, 'ai'),
-      'Bulut': AppTranslations.translate(lang, 'cloud'),
-      'Oyun': AppTranslations.translate(lang, 'gaming'),
-      'Eğitim': AppTranslations.translate(lang, 'education'),
-      'Spor': AppTranslations.translate(lang, 'sports'),
-      'Üretkenlik': AppTranslations.translate(lang, 'productivity'),
-      'Güvenlik': AppTranslations.translate(lang, 'security'),
-      'Diğer': AppTranslations.translate(lang, 'other'),
-    };
-
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(
-          widget.subscriptionToEdit == null
-              ? AppTranslations.translate(lang, 'add_sub_title')
-              : AppTranslations.translate(lang, 'edit_sub_title'),
-          style: GoogleFonts.inter(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
-          ),
-        ),
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            const SizedBox(height: 8),
-
-            // Search Bar
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: TextFormField(
-                style: GoogleFonts.inter(color: AppColors.textPrimary, fontSize: 14),
-                onChanged: (value) {
-                  setState(() {
-                    _searchQuery = value;
-                  });
-                },
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: AppColors.surface1,
-                  hintText: AppTranslations.translate(lang, 'search_services'),
-                  hintStyle: GoogleFonts.inter(color: AppColors.textSecondary.withValues(alpha: 0.5)),
-                  prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textSecondary),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: AppColors.borderSubtle, width: 1.2),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: AppColors.borderSubtle, width: 1.2),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: AppColors.accentPurple, width: 1.5),
-                  ),
-                ),
-              ),
-            ).animate().fade(),
-
-            const SizedBox(height: 16),
-
-            // Category tabs
-            SizedBox(
-              height: 40,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: _categories.length,
-                itemBuilder: (context, index) {
-                  final cat = _categories[index];
-                  final isSelected = _selectedCategory == cat;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: InkWell(
-                      onTap: () {
-                        setState(() {
-                          _selectedCategory = cat;
-                        });
-                      },
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: isSelected ? AppColors.accentPurple : Colors.transparent,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: isSelected ? AppColors.accentPurple : AppColors.borderSubtle,
-                            width: 1.2,
-                          ),
-                        ),
-                        child: Text(
-                          categoriesMap[cat] ?? cat,
-                          style: GoogleFonts.inter(
-                            fontSize: 13,
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                            color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // Service grid (3 columns)
-            Expanded(
-              child: GridView.builder(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
-                  childAspectRatio: 0.88,
-                ),
-                itemCount: filteredPresets.length,
-                itemBuilder: (context, index) {
-                  final preset = filteredPresets[index];
-
-                  if (preset.name == 'Diğer') {
-                    return InkWell(
-                      onTap: () => _showSubscriptionBottomSheet(
-                        context: context,
-                        presetName: '',
-                        presetEmoji: '➕',
-                        presetPrice: 0,
-                        presetCategory: 'Diğer',
-                        presetCurrency: 'TRY',
-                        presetIsUsd: false,
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: AppColors.surface1,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: AppColors.borderSubtle,
-                            width: 1.2,
-                            style: BorderStyle.solid,
-                          ),
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.add, color: AppColors.accentPurple, size: 28),
-                            const SizedBox(height: 6),
-                            Text(
-                              AppTranslations.translate(lang, 'other'),
-                              style: GoogleFonts.inter(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ).animate().fade();
-                  }
-
-                  return InkWell(
-                    onTap: () => _showSubscriptionBottomSheet(
-                      context: context,
-                      presetName: preset.name,
-                      presetEmoji: preset.emoji,
-                      presetPrice: preset.isUsdBased ? preset.usdAmount! : preset.price,
-                      presetCategory: preset.category,
-                      presetCurrency: preset.currency,
-                      presetIsUsd: preset.isUsdBased,
-                    ),
-                    borderRadius: BorderRadius.circular(20),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            AppColors.surface2.withValues(alpha: 0.8),
-                            AppColors.surface1.withValues(alpha: 0.9),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: AppColors.borderSubtle.withValues(alpha: 0.5),
-                          width: 1.2,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.2),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          preset.domain != null
-                              ? ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Image.network(
-                                    'https://logo.clearbit.com/${preset.domain}',
-                                    width: 32,
-                                    height: 32,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Text(
-                                        preset.emoji,
-                                        style: const TextStyle(fontSize: 26),
-                                      );
-                                    },
-                                  ),
-                                )
-                              : Text(
-                                  preset.emoji,
-                                  style: const TextStyle(fontSize: 26),
-                                ),
-                          const SizedBox(height: 8),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            child: Text(
-                              preset.name,
-                              textAlign: TextAlign.center,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.inter(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            preset.isUsdBased
-                                ? '\$${preset.usdAmount}'
-                                : '₺${preset.price.toStringAsFixed(0)}',
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.accentPurple,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ).animate().fade(duration: 250.ms).scale(begin: const Offset(0.95, 0.95));
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SubscriptionFormBottomSheet extends ConsumerStatefulWidget {
-  final String presetName;
-  final String presetEmoji;
-  final double presetPrice;
-  final String presetCategory;
-  final String presetCurrency;
-  final bool presetIsUsd;
-  final Subscription? editSub;
-
-  const _SubscriptionFormBottomSheet({
-    required this.presetName,
-    required this.presetEmoji,
-    required this.presetPrice,
-    required this.presetCategory,
-    required this.presetCurrency,
-    required this.presetIsUsd,
-    this.editSub,
-  });
-
-  @override
-  ConsumerState<_SubscriptionFormBottomSheet> createState() => _SubscriptionFormBottomSheetState();
-}
-
-class _SubscriptionFormBottomSheetState extends ConsumerState<_SubscriptionFormBottomSheet> {
+new_state_class = '''class _SubscriptionFormBottomSheetState extends ConsumerState<_SubscriptionFormBottomSheet> {
   final _formKey = GlobalKey<FormState>();
 
   late TextEditingController _nameController;
@@ -481,11 +76,13 @@ class _SubscriptionFormBottomSheetState extends ConsumerState<_SubscriptionFormB
       _usdRate = subState.rates['USD'] ?? 32.50;
       
       // Yahoo Finance fetch
+      import 'dart:convert';
+      import 'package:http/http.dart' as http;
       
       Future<double?> fetchRate(String symbol) async {
         try {
-          final url = Uri.parse('https://query2.finance.yahoo.com/v8/finance/chart/$symbol?interval=1d&range=1d');
-          final response = await http.get(url, headers: {'User-Agent': 'Mozilla/5.0'});
+          final url = Uri.parse('https://query1.finance.yahoo.com/v8/finance/chart/$symbol?interval=1d&range=1d');
+          final response = await http.get(url);
           if (response.statusCode == 200) {
             final data = json.decode(response.body);
             final result = data['chart']['result'][0];
@@ -533,11 +130,11 @@ class _SubscriptionFormBottomSheetState extends ConsumerState<_SubscriptionFormB
     if (price == 0) return 0;
     
     double monthly = price;
-    if (_billingCycle == 'Haftalık') { monthly = price * 52 / 12; }
-    else if (_billingCycle == '2 Haftada Bir') { monthly = price * 26 / 12; }
-    else if (_billingCycle == '3 Aylık') { monthly = price / 3; }
-    else if (_billingCycle == '6 Aylık') { monthly = price / 6; }
-    else if (_billingCycle == 'Yıllık') { monthly = price / 12; }
+    if (_billingCycle == 'Haftalık') monthly = price * 52 / 12;
+    else if (_billingCycle == '2 Haftada Bir') monthly = price * 26 / 12;
+    else if (_billingCycle == '3 Aylık') monthly = price / 3;
+    else if (_billingCycle == '6 Aylık') monthly = price / 6;
+    else if (_billingCycle == 'Yıllık') monthly = price / 12;
     else if (_billingCycle == 'Özel') {
       final days = int.tryParse(_cycleDaysController.text.trim()) ?? 30;
       if (days > 0) monthly = (price / days) * 30;
@@ -575,10 +172,8 @@ class _SubscriptionFormBottomSheetState extends ConsumerState<_SubscriptionFormB
     final notifier = ref.read(subscriptionProvider.notifier);
     if (widget.editSub == null) {
       notifier.addSubscription(sub);
-      ActivityTracker.logSubAdded(sub.name, sub.priceInTL);
     } else {
       notifier.updateSubscription(sub, updateAllWithName: _updateAllSameName);
-      ActivityTracker.logAction("Abonelik Güncellendi", "Kullanıcı '${sub.name}' aboneliğini güncelledi.");
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -851,7 +446,7 @@ class _SubscriptionFormBottomSheetState extends ConsumerState<_SubscriptionFormB
                 children: [
                   Switch(
                     value: _sendReminder,
-                    activeThumbColor: AppColors.accentPurple,
+                    activeColor: AppColors.accentPurple,
                     onChanged: (val) => setState(() => _sendReminder = val),
                   ),
                   const SizedBox(width: 8),
@@ -965,4 +560,12 @@ class _SubscriptionFormBottomSheetState extends ConsumerState<_SubscriptionFormB
       ),
     );
   }
-}
+}'''
+
+start_idx = code.find('class _SubscriptionFormBottomSheetState extends ConsumerState<_SubscriptionFormBottomSheet> {')
+end_idx = code.rfind('}') + 1
+
+new_code = code[:start_idx] + new_state_class + code[end_idx:]
+
+with open('lib/screens/add_subscription_screen.dart', 'w', encoding='utf-8') as f:
+    f.write(new_code)

@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
+import '../widgets/ai_assistant_button.dart';
 import '../constants/app_colors.dart';
 import '../providers/subscription_provider.dart';
-import '../services/currency_service.dart';
 
 class InsightsScreen extends ConsumerStatefulWidget {
   const InsightsScreen({super.key});
@@ -14,17 +14,10 @@ class InsightsScreen extends ConsumerStatefulWidget {
 }
 
 class _InsightsScreenState extends ConsumerState<InsightsScreen> {
-  double _currentUsdRate = 32.0;
 
   @override
   void initState() {
     super.initState();
-    _loadRate();
-  }
-
-  Future<void> _loadRate() async {
-    final rate = await CurrencyService.getUSDToTRYRate();
-    if (mounted) setState(() => _currentUsdRate = rate);
   }
 
   @override
@@ -65,6 +58,9 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
           onPressed: () => Navigator.of(context).pop(),
         ),
+        actions: const [
+          AIAssistantButton(),
+        ],
       ),
       body: subs.isEmpty 
           ? const Center(child: Text('Yeterli veri yok', style: TextStyle(color: Colors.white)))

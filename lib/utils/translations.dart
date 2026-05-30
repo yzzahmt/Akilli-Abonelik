@@ -51,6 +51,7 @@ class AppTranslations {
 
       // Add Subscription
       'add_sub_title': 'Abonelik Ekle',
+      'add_sub': 'Abonelik Ekle',
       'edit_sub_title': 'Abonelik Düzenle',
       'sub_name': 'Abonelik Adı',
       'category': 'Kategori',
@@ -96,6 +97,26 @@ class AppTranslations {
       'category_dist': 'Kategori Dağılımı',
       'monthly_spending_trend': 'Aylara Göre Toplam Harcama',
       'most_expensive_subs': 'En Pahalı Abonelikler',
+
+      // AI Assistant
+      'ai_greeting': 'Merhaba! Ben SubsTrack Finansal Yapay Zeka Asistanın. Bütçen, aboneliklerin ve yatırımların hakkında sana nasıl yardımcı olabilirim?',
+      'ai_prompt_rule': 'Sadece Türkçe konuşacaksın. Tüm cevapların tamamen Türkçe olmalı.',
+      'ai_suggestion_1': 'Tüm aboneliklerime %30 zam gelirse aylık bütçem ne olur?',
+      'ai_suggestion_2': 'Şu anki 3 aboneliğimi iptal edersem yılda kaç para tasarruf ederim?',
+      'ai_suggestion_3': 'Yatırımlarımın durumu nedir? Ne tavsiye edersin?',
+      'ai_suggestion_4': 'Mevcut harcamalarıma göre nasıl daha fazla tasarruf edebilirim?',
+      'ai_input_hint': 'Yapay zekaya sor...',
+      'ai_server_busy': 'SubsTrack AI Sunucuları şu anda yoğun. Lütfen birazdan tekrar deneyin.',
+      'ai_network_error': 'Bağlantı hatası: Lütfen internetinizi kontrol edin.',
+      'ai_json_prompt_rule': 'Sadece Türkçe konuşacaksın.',
+      
+      // Finansal Kokpit AI
+      'ai_deep_analysis': 'SubsTrack AI ile Derinlemesine Analiz',
+      'ai_title': 'SubsTrack Yapay Zeka',
+      'ai_genel_ozet': 'Genel Özet',
+      'ai_tavsiye': 'Tavsiye',
+      'ai_projeksiyon': '1 Yıllık Projeksiyon',
+      'ai_kritik': 'Kritik Uyarı',
     },
     'EN': {
       // Home
@@ -148,6 +169,7 @@ class AppTranslations {
 
       // Add Subscription
       'add_sub_title': 'Add Subscription',
+      'add_sub': 'Add Subscription',
       'edit_sub_title': 'Edit Subscription',
       'sub_name': 'Subscription Name',
       'category': 'Category',
@@ -193,6 +215,26 @@ class AppTranslations {
       'category_dist': 'Category Breakdown',
       'monthly_spending_trend': 'Monthly Spending Trend',
       'most_expensive_subs': 'Most Expensive Subscriptions',
+
+      // AI Assistant
+      'ai_greeting': 'Hello! I am your SubsTrack Financial AI Assistant. How can I help you with your budget, subscriptions, and investments?',
+      'ai_prompt_rule': 'You must speak ONLY in English. All your responses must be strictly in English.',
+      'ai_suggestion_1': 'If all my subscriptions increase by 30%, what will my monthly budget be?',
+      'ai_suggestion_2': 'If I cancel my current 3 subscriptions, how much money will I save in a year?',
+      'ai_suggestion_3': 'What is the status of my investments? What do you recommend?',
+      'ai_suggestion_4': 'How can I save more money based on my current spending?',
+      'ai_input_hint': 'Ask the AI...',
+      'ai_server_busy': 'SubsTrack AI Servers are currently busy. Please try again later.',
+      'ai_network_error': 'Connection error: Please check your internet connection.',
+      'ai_json_prompt_rule': 'You must speak ONLY in English.',
+      
+      // Finansal Kokpit AI
+      'ai_deep_analysis': 'In-Depth Analysis with SubsTrack AI',
+      'ai_title': 'SubsTrack AI',
+      'ai_genel_ozet': 'General Summary',
+      'ai_tavsiye': 'Recommendation',
+      'ai_projeksiyon': '1-Year Projection',
+      'ai_kritik': 'Critical Warning',
     }
   };
 

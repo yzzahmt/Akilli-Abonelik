@@ -4,12 +4,18 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../providers/subscription_provider.dart';
 import '../providers/settings_provider.dart';
 import '../constants/app_colors.dart';
 import '../utils/export_utils.dart';
 import '../utils/translations.dart';
+import '../services/notification_service.dart';
+import '../services/backup_service.dart';
 import 'insights_screen.dart';
+import 'kvkk_screen.dart';
+import 'ai_assistant_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -22,6 +28,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _notificationsOn = true;
   int _reminderDays = 1;
   String _currencyDisplayMode = 'TL + USD';
+  bool _monthlySummaryOn = false; 
+  String _appVersion = ''; 
+  bool _showSplashAnimation = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVersion();
+    Future.delayed(const Duration(milliseconds: 700), () {
+      if (mounted) setState(() => _showSplashAnimation = false);
+    });
+  }
+
+  // SubsTrack yeni özellik — Gerçek versiyon (Bölüm 12)
+  Future<void> _loadVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (mounted) setState(() => _appVersion = '${info.version}+${info.buildNumber}');
+    } catch (_) {
+      if (mounted) setState(() => _appVersion = '2.0.0');
+    }
+  }
 
   void _shareApp(String lang) {
     final appText = lang == 'TR'
@@ -161,13 +189,23 @@ Manage Netflix, Spotify, YouTube Premium and more in one app!
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: ListView(
-            physics: const BouncingScrollPhysics(),
-            children: [
-              const SizedBox(height: 16),
+      body: _showSplashAnimation
+          ? Center(
+              child: const Icon(Icons.settings_rounded, size: 72, color: AppColors.accentPurple)
+                  .animate(onPlay: (controller) => controller.repeat())
+                  .rotate(duration: 1200.ms)
+                  .scale(begin: const Offset(0.5, 0.5), end: const Offset(1.2, 1.2), duration: 700.ms, curve: Curves.easeOutBack)
+                  .fade(duration: 300.ms),
+            )
+          : Stack(
+              children: [
+                SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: ListView(
+                physics: const BouncingScrollPhysics(),
+                children: [
+                  const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -216,7 +254,7 @@ Manage Netflix, Spotify, YouTube Premium and more in one app!
               // Premium Banner Card
               if (!isPremium)
                 GestureDetector(
-                  onTap: () => _showPremiumDialog(context, lang),
+                  onTap: () {}, // Disabled for now
                   child: Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(18),
@@ -229,7 +267,7 @@ Manage Netflix, Spotify, YouTube Premium and more in one app!
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.accentPurple.withOpacity(0.3),
+                          color: AppColors.accentPurple.withValues(alpha: 0.3),
                           blurRadius: 15,
                           offset: const Offset(0, 5),
                         )
@@ -257,7 +295,7 @@ Manage Netflix, Spotify, YouTube Premium and more in one app!
                                     : 'Remove ads, export CSV, and more.',
                                 style: GoogleFonts.inter(
                                   fontSize: 12,
-                                  color: AppColors.textPrimary.withOpacity(0.85),
+                                  color: AppColors.textPrimary.withValues(alpha: 0.85),
                                 ),
                               ),
                             ],
@@ -274,13 +312,28 @@ Manage Netflix, Spotify, YouTube Premium and more in one app!
                             ),
                             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                           ),
-                          onPressed: () => _showPremiumDialog(context, lang),
-                          child: Text(
-                            lang == 'TR' ? 'Yükselt' : 'Upgrade',
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                            ),
+                          onPressed: () {}, // Disabled for now
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                lang == 'TR' ? 'Yükselt' : 'Upgrade',
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  decoration: TextDecoration.lineThrough,
+                                  color: AppColors.accentPurple.withValues(alpha: 0.5),
+                                ),
+                              ),
+                              Text(
+                                lang == 'TR' ? 'Çok Yakında\nAktif' : 'Coming\nSoon',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -361,6 +414,7 @@ Manage Netflix, Spotify, YouTube Premium and more in one app!
 
               const SizedBox(height: 24),
 
+
               // Notification Settings
               _buildSectionTitle(AppTranslations.translate(lang, 'notifications')),
               Container(
@@ -412,6 +466,43 @@ Manage Netflix, Spotify, YouTube Premium and more in one app!
                         ),
                       ),
                     ],
+                    // SubsTrack yeni özellik — Bildirim test butonu (Bölüm 12)
+                    const Divider(color: Color(0x11FFFFFF), height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.notifications_active_rounded, color: AppColors.accentPurple),
+                      title: Text(lang == 'TR' ? 'Test Bildirimi Gönder' : 'Send Test Notification',
+                          style: GoogleFonts.inter(fontSize: 14, color: AppColors.textPrimary)),
+                      trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.textMuted),
+                      onTap: () async {
+                        await NotificationService.showTestNotification();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(lang == 'TR' ? '🔔 Test bildirimi gönderildi!' : '🔔 Test notification sent!'),
+                              backgroundColor: AppColors.activeGreen,
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                    // SubsTrack yeni özellik — Aylık özet switch (Bölüm 12)
+                    const Divider(color: Color(0x11FFFFFF), height: 1),
+                    SwitchListTile.adaptive(
+                      title: Text(lang == 'TR' ? 'Aylık Özet Bildirimi' : 'Monthly Summary',
+                          style: GoogleFonts.inter(fontSize: 14, color: AppColors.textPrimary)),
+                      subtitle: Text(lang == 'TR' ? "Her ayın 1'inde harcama özeti" : "Spending summary on 1st",
+                          style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary)),
+                      activeTrackColor: AppColors.accentPurple,
+                      value: _monthlySummaryOn,
+                      onChanged: (val) async {
+                        setState(() => _monthlySummaryOn = val);
+                        if (val) {
+                          await NotificationService.scheduleMonthlySummary();
+                        } else {
+                          await NotificationService.cancel(9999);
+                        }
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -518,6 +609,30 @@ Manage Netflix, Spotify, YouTube Premium and more in one app!
                         }
                       },
                     ),
+                    const Divider(color: Color(0x11FFFFFF), height: 1),
+                    ListTile(
+                      leading: Icon(
+                        Icons.auto_awesome,
+                        color: isPremium ? const Color(0xFF00F2FE) : AppColors.textMuted,
+                      ),
+                      title: Row(
+                        children: [
+                          Text(lang == 'TR' ? 'Yapay Zeka Asistanı' : 'AI Assistant', style: GoogleFonts.inter(fontSize: 14, color: isPremium ? AppColors.textPrimary : AppColors.textMuted)),
+                          const SizedBox(width: 6),
+                          if (!isPremium) _buildProBadge(),
+                        ],
+                      ),
+                      trailing: isPremium ? const Icon(Icons.arrow_forward_ios_rounded, color: AppColors.textMuted, size: 14) : const Icon(Icons.lock_rounded, color: AppColors.textMuted, size: 18),
+                      onTap: () {
+                        if (!isPremium) {
+                          _showProLockedSnackbar(lang);
+                        } else {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (context) => const AIAssistantScreen()),
+                          );
+                        }
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -607,24 +722,19 @@ Manage Netflix, Spotify, YouTube Premium and more in one app!
                     ),
                     const Divider(color: Color(0x11FFFFFF), height: 1),
                     ListTile(
-                      leading: Icon(
-                        Icons.restore_rounded,
-                        color: isPremium ? AppColors.accentPurple : AppColors.textMuted,
+                      leading: const Icon(Icons.restore_rounded, color: AppColors.activeGreen),
+                      title: Text(
+                        lang == 'TR' ? 'Yedekten Yükle (JSON)' : 'Restore from JSON Backup',
+                        style: GoogleFonts.inter(fontSize: 14, color: AppColors.textPrimary),
                       ),
-                      title: Row(
-                        children: [
-                          Text(AppTranslations.translate(lang, 'restore_backup'), style: GoogleFonts.inter(fontSize: 14, color: isPremium ? AppColors.textPrimary : AppColors.textMuted)),
-                          const SizedBox(width: 6),
-                          if (!isPremium) _buildProBadge(),
-                        ],
+                      subtitle: Text(
+                        lang == 'TR' ? 'Tüm veriler birleştirilir' : 'Data is merged, not overwritten',
+                        style: GoogleFonts.inter(fontSize: 11, color: AppColors.textSecondary),
                       ),
-                      trailing: isPremium ? null : const Icon(Icons.lock_rounded, color: AppColors.textMuted, size: 18),
-                      onTap: () {
-                        if (!isPremium) {
-                          _showProLockedSnackbar(lang);
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Feature coming soon')));
-                        }
+                      trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.textMuted),
+                      onTap: () async {
+                        final ok = await BackupService.import(context);
+                        if (ok) ref.read(subscriptionProvider.notifier).fetchSubscriptions();
                       },
                     ),
                     const Divider(color: Color(0x11FFFFFF), height: 1),
@@ -698,9 +808,46 @@ Manage Netflix, Spotify, YouTube Premium and more in one app!
                         style: GoogleFonts.inter(fontSize: 14, color: AppColors.textPrimary),
                       ),
                       trailing: Text(
-                        'v2.0.0',
+                        _appVersion.isNotEmpty ? 'v$_appVersion' : 'v2.0.0',
                         style: GoogleFonts.inter(fontSize: 14, color: AppColors.textSecondary),
                       ),
+                    ),
+                    const Divider(color: Color(0x11FFFFFF), height: 1),
+                    // SubsTrack yeni özellik — KVKK tam ekran (Bölüm 10)
+                    ListTile(
+                      leading: const Icon(Icons.security_outlined, color: AppColors.accentPurple),
+                      title: Text(lang == 'TR' ? 'KVKK / Gizlilik Politikası' : 'Privacy Policy (KVKK)',
+                          style: GoogleFonts.inter(fontSize: 14, color: AppColors.textPrimary)),
+                      trailing: const Icon(Icons.arrow_forward_ios_rounded, color: AppColors.textMuted, size: 14),
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const KvkkScreen(isReadOnly: true)),
+                        );
+                      },
+                    ),
+                    const Divider(color: Color(0x11FFFFFF), height: 1),
+                    // SubsTrack yeni özellik — Onboarding sıfırla (Bölüm 3)
+                    ListTile(
+                      leading: const Icon(Icons.restart_alt_rounded, color: AppColors.warningAmber),
+                      title: Text(lang == 'TR' ? 'Tanıtımı Tekrar Göster' : 'Show Onboarding Again',
+                          style: GoogleFonts.inter(fontSize: 14, color: AppColors.textPrimary)),
+                      trailing: const Icon(Icons.arrow_forward_ios_rounded, color: AppColors.textMuted, size: 14),
+                      onTap: () async {
+                        try {
+                          final prefs = await SharedPreferences.getInstance();
+                          await prefs.setBool('onboarding_done', false);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(lang == 'TR'
+                                    ? 'Tanıtım sıfırlandı. Uygulamayı yeniden başlatın.'
+                                    : 'Onboarding reset. Restart the app.'),
+                                backgroundColor: AppColors.warningAmber,
+                              ),
+                            );
+                          }
+                        } catch (_) {}
+                      },
                     ),
                     const Divider(color: Color(0x11FFFFFF), height: 1),
                     ListTile(
@@ -755,8 +902,25 @@ Manage Netflix, Spotify, YouTube Premium and more in one app!
           ),
         ),
       ),
-    );
-  }
+      if (_showSplashAnimation)
+        Positioned.fill(
+          child: IgnorePointer(
+            child: Container(
+              color: AppColors.background.withValues(alpha: 0.8),
+              child: Center(
+                child: const Icon(Icons.settings_rounded, color: AppColors.accentPurple, size: 60)
+                    .animate()
+                    .rotate(begin: 0, end: 1.0, duration: 600.ms, curve: Curves.easeInOutCubic)
+                    .scale(begin: const Offset(0.5, 0.5), end: const Offset(40, 40), duration: 600.ms, curve: Curves.easeInQuint)
+                    .fade(end: 0, duration: 200.ms, delay: 400.ms),
+              ),
+            ).animate().fade(end: 0, duration: 250.ms, delay: 450.ms),
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _buildSectionTitle(String title) {
     return Padding(
@@ -776,7 +940,7 @@ Manage Netflix, Spotify, YouTube Premium and more in one app!
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: AppColors.accentPurple.withOpacity(0.2),
+        color: AppColors.accentPurple.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
@@ -855,16 +1019,16 @@ Manage Netflix, Spotify, YouTube Premium and more in one app!
           borderRadius: BorderRadius.circular(24),
           gradient: LinearGradient(
             colors: [
-              AppColors.accentPurple.withOpacity(0.8),
+              AppColors.accentPurple.withValues(alpha: 0.8),
               const Color(0xFF00F2FE), // Cyan
-              AppColors.accentPurple.withOpacity(0.8),
+              AppColors.accentPurple.withValues(alpha: 0.8),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           boxShadow: [
             BoxShadow(
-              color: AppColors.accentPurple.withOpacity(0.3),
+              color: AppColors.accentPurple.withValues(alpha: 0.3),
               blurRadius: 20,
               spreadRadius: -5,
               offset: const Offset(0, 10),
@@ -895,7 +1059,7 @@ Manage Netflix, Spotify, YouTube Premium and more in one app!
                     style: GoogleFonts.inter(
                       fontSize: 8,
                       letterSpacing: 1.5,
-                      color: AppColors.textSecondary.withOpacity(0.7),
+                      color: AppColors.textSecondary.withValues(alpha: 0.7),
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -931,7 +1095,7 @@ Manage Netflix, Spotify, YouTube Premium and more in one app!
       ).animate()
        .fadeIn(duration: 1.seconds)
        .slideY(begin: 0.3, end: 0, curve: Curves.easeOutCubic)
-       .shimmer(duration: 3.seconds, color: Colors.white.withOpacity(0.1)),
+       .shimmer(duration: 3.seconds, color: Colors.white.withValues(alpha: 0.1)),
     );
   }
 }

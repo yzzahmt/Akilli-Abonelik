@@ -1,6 +1,8 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/subscription.dart';
+import '../models/investment_model.dart';
+import '../models/cash_account_model.dart';
 
 class DBService {
   static final DBService instance = DBService._init();
@@ -29,7 +31,7 @@ class DBService {
 
     return await openDatabase(
       path,
-      version: 3,
+      version: 7, 
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -48,7 +50,11 @@ class DBService {
         renewalDay INTEGER NOT NULL,
         notifyDaysBefore INTEGER NOT NULL DEFAULT 2,
         isActive INTEGER NOT NULL DEFAULT 1,
-        createdAt TEXT NOT NULL
+        createdAt TEXT NOT NULL,
+        billingCycle TEXT NOT NULL DEFAULT 'Aylık',
+        cycleDays INTEGER NOT NULL DEFAULT 30,
+        currency TEXT NOT NULL DEFAULT 'TRY',
+        originalPrice REAL NOT NULL DEFAULT 0.0
       )
     ''');
 
@@ -61,6 +67,46 @@ class DBService {
 
     await db.insert('rates', {'code': 'TRY', 'rate': 1.0});
     await db.insert('rates', {'code': 'USD', 'rate': 32.5});
+
+    // SubsTrack yeni özellik — Yatırım tablosu (Bölüm 7)
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS investments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        symbol TEXT NOT NULL,
+        type TEXT NOT NULL,
+        quantity REAL NOT NULL,
+        buy_price REAL NOT NULL,
+        buy_date TEXT NOT NULL,
+        currency TEXT DEFAULT 'TRY',
+        notes TEXT,
+        created_at TEXT NOT NULL
+      )
+    ''');
+
+    // SubsTrack yeni özellik — is_favorite kolonu (Bölüm 5)
+    try {
+      await db.execute('ALTER TABLE subscriptions ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0');
+    } catch (_) {} // Zaten varsa hata vermez
+
+    // SubsTrack yeni özellik — Aktivite Logları (Bölüm 9)
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS activity_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        action_type TEXT NOT NULL,
+        description TEXT NOT NULL,
+        timestamp TEXT NOT NULL
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS cash_accounts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        amount REAL NOT NULL,
+        currency TEXT DEFAULT 'TRY'
+      )
+    ''');
   }
 
   Future<void> _upgradeDB(Database db, int oldVersion, int newVersion) async {
@@ -69,6 +115,88 @@ class DBService {
       await db.execute('DROP TABLE IF EXISTS rates');
       await _createDB(db, newVersion);
     }
+    // SubsTrack yeni özellik — v4 yükseltme (Bölüm 7)
+    if (oldVersion < 4) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS investments (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          symbol TEXT NOT NULL,
+          type TEXT NOT NULL,
+          quantity REAL NOT NULL,
+          buy_price REAL NOT NULL,
+          buy_date TEXT NOT NULL,
+          currency TEXT DEFAULT 'TRY',
+          notes TEXT,
+          created_at TEXT NOT NULL
+        )
+      ''');
+      // is_favorite kolonu — mevcut tabloya ekle
+      try {
+        await db.execute('ALTER TABLE subscriptions ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0');
+      } catch (_) {}
+    }
+    // SubsTrack yeni özellik — v5 yükseltme (Bölüm 8)
+    if (oldVersion < 5) {
+      try {
+        await db.execute("ALTER TABLE subscriptions ADD COLUMN billingCycle TEXT NOT NULL DEFAULT 'Aylık'");
+        await db.execute('ALTER TABLE subscriptions ADD COLUMN cycleDays INTEGER NOT NULL DEFAULT 30');
+        await db.execute("ALTER TABLE subscriptions ADD COLUMN currency TEXT NOT NULL DEFAULT 'TRY'");
+        await db.execute('ALTER TABLE subscriptions ADD COLUMN originalPrice REAL NOT NULL DEFAULT 0.0');
+      } catch (_) {}
+    }
+    if (oldVersion < 6) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS activity_logs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          action_type TEXT NOT NULL,
+          description TEXT NOT NULL,
+          timestamp TEXT NOT NULL
+        )
+      ''');
+    }
+    if (oldVersion < 7) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS cash_accounts (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          amount REAL NOT NULL,
+          currency TEXT DEFAULT 'TRY'
+        )
+      ''');
+    }
+  }
+
+  // --- Cash Account Methods ---
+
+  Future<int> insertCashAccount(CashAccount account) async {
+    final db = await instance.database;
+    return await db.insert('cash_accounts', account.toMap());
+  }
+
+  Future<List<CashAccount>> getAllCashAccounts() async {
+    final db = await instance.database;
+    final result = await db.query('cash_accounts', orderBy: 'id DESC');
+    return result.map((json) => CashAccount.fromMap(json)).toList();
+  }
+
+  Future<int> updateCashAccount(CashAccount account) async {
+    final db = await instance.database;
+    return await db.update(
+      'cash_accounts',
+      account.toMap(),
+      where: 'id = ?',
+      whereArgs: [account.id],
+    );
+  }
+
+  Future<int> deleteCashAccount(int id) async {
+    final db = await instance.database;
+    return await db.delete(
+      'cash_accounts',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
   }
 
   // --- Subscriptions CRUD ---
@@ -152,5 +280,98 @@ class DBService {
       rates[row['code'] as String] = row['rate'] as double;
     }
     return rates;
+  }
+
+  // SubsTrack yeni özellik — Yatırım CRUD (Bölüm 7)
+  Future<int> insertInvestment(Investment inv) async {
+    final db = await instance.database;
+    return await db.insert('investments', inv.toMap());
+  }
+
+  Future<List<Investment>> getAllInvestments() async {
+    final db = await instance.database;
+    final result = await db.query('investments', orderBy: 'created_at DESC');
+    return result.map((json) => Investment.fromMap(json)).toList();
+  }
+
+  Future<int> updateInvestment(Investment inv) async {
+    final db = await instance.database;
+    return await db.update(
+      'investments',
+      inv.toMap(),
+      where: 'id = ?',
+      whereArgs: [inv.id],
+    );
+  }
+
+  Future<int> deleteInvestment(int id) async {
+    final db = await instance.database;
+    return await db.delete('investments', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // SubsTrack yeni özellik — Favori toggle (Bölüm 5)
+  Future<void> toggleFavorite(int id, bool isFavorite) async {
+    final db = await instance.database;
+    await db.update(
+      'subscriptions',
+      {'is_favorite': isFavorite ? 1 : 0},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  // --- Activity Logs CRUD (Bölüm 9) ---
+  Future<void> insertActivityLog(String actionType, String description) async {
+    final db = await instance.database;
+    await db.insert('activity_logs', {
+      'action_type': actionType,
+      'description': description,
+      'timestamp': DateTime.now().toIso8601String(),
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> getRecentActivityLogs({int limit = 50}) async {
+    final db = await instance.database;
+    return await db.query(
+      'activity_logs',
+      orderBy: 'timestamp DESC',
+      limit: limit,
+    );
+  }
+
+  // SubsTrack yeni özellik — Tüm verileri JSON'a çevir (Bölüm 11)
+  Future<Map<String, dynamic>> exportAllData() async {
+    final subs = await getAllSubscriptions();
+    final invs = await getAllInvestments();
+    return {
+      'version': 4,
+      'exportDate': DateTime.now().toIso8601String(),
+      'subscriptions': subs.map((s) => s.toMap()).toList(),
+      'investments': invs.map((i) => i.toMap()).toList(),
+    };
+  }
+
+  // SubsTrack yeni özellik — JSON'dan veri yükle (Bölüm 11)
+  Future<void> importData(Map<String, dynamic> data) async {
+    final db = await instance.database;
+    final batch = db.batch();
+
+    // Subscriptions ekle (merge — mevcut verileri silme)
+    final subsData = data['subscriptions'] as List<dynamic>? ?? [];
+    for (var subMap in subsData) {
+      final map = Map<String, dynamic>.from(subMap);
+      map.remove('id'); // Otomatik ID al
+      batch.insert('subscriptions', map, conflictAlgorithm: ConflictAlgorithm.ignore);
+    }
+
+    // Investments ekle
+    final invData = data['investments'] as List<dynamic>? ?? [];
+    for (var invMap in invData) {
+      final map = Map<String, dynamic>.from(invMap);
+      map.remove('id');
+      batch.insert('investments', map, conflictAlgorithm: ConflictAlgorithm.ignore);
+    }
+
+    await batch.commit(noResult: true);
   }
 }

@@ -5,6 +5,8 @@ import '../services/database_service.dart';
 import '../services/notification_service.dart';
 import '../services/currency_service.dart';
 import '../services/ad_service.dart';
+import '../services/activity_tracker.dart';
+import '../providers/settings_provider.dart';
 
 class SubscriptionState {
   final List<Subscription> subscriptions;
@@ -88,8 +90,8 @@ class SubscriptionNotifier extends Notifier<SubscriptionState> {
       subscriptions: [...state.subscriptions, insertedSub],
     );
 
-    await NotificationService.instance.scheduleRenewalNotification(insertedSub);
-    AdService.onSubscriptionAdded();
+    await NotificationService.scheduleReminder(id: insertedSub.id!, name: insertedSub.name, amount: insertedSub.price, currency: insertedSub.currency, renewalDate: insertedSub.nextRenewalDate, daysBefore: insertedSub.notifyDaysBefore);
+    AdService.onSubscriptionAdded(ref.read(isPremiumProvider));
   }
 
   Future<void> updateSubscription(Subscription sub, {bool updateAllWithName = false}) async {
@@ -106,7 +108,7 @@ class SubscriptionNotifier extends Notifier<SubscriptionState> {
           );
           await DBService.instance.updateSubscription(updatedS);
           updatedSubs.add(updatedS);
-          await NotificationService.instance.scheduleRenewalNotification(updatedS);
+          await NotificationService.scheduleReminder(id: updatedS.id!, name: updatedS.name, amount: updatedS.price, currency: updatedS.currency, renewalDate: updatedS.nextRenewalDate, daysBefore: updatedS.notifyDaysBefore);
         } else {
           updatedSubs.add(s);
         }
@@ -118,19 +120,21 @@ class SubscriptionNotifier extends Notifier<SubscriptionState> {
         return s.id == sub.id ? sub : s;
       }).toList();
       state = state.copyWith(subscriptions: updatedSubs);
-      await NotificationService.instance.scheduleRenewalNotification(sub);
+      await NotificationService.scheduleReminder(id: sub.id!, name: sub.name, amount: sub.price, currency: sub.currency, renewalDate: sub.nextRenewalDate, daysBefore: sub.notifyDaysBefore);
     }
     _updateHomeWidget();
   }
 
   Future<void> deleteSubscription(int id) async {
+    final subToDelete = state.subscriptions.firstWhere((s) => s.id == id);
     await DBService.instance.deleteSubscription(id);
 
     final filteredSubs = state.subscriptions.where((s) => s.id != id).toList();
 
     state = state.copyWith(subscriptions: filteredSubs);
 
-    await NotificationService.instance.cancelNotification(id);
+    await NotificationService.cancel(id);
+    await ActivityTracker.logAction("Abonelik Silindi", "Kullanıcı '${subToDelete.name}' aboneliğini sildi.");
   }
 
   double convertToTRY(double price, String currency) {
@@ -142,7 +146,35 @@ class SubscriptionNotifier extends Notifier<SubscriptionState> {
     double total = 0.0;
     for (var sub in state.subscriptions) {
       if (sub.isActive) {
-        total += convertToTRY(sub.price, sub.currency);
+        double subPriceTRY = convertToTRY(sub.price, sub.currency);
+        double monthlyCost = subPriceTRY;
+        
+        switch (sub.billingCycle) {
+          case 'Haftalık':
+            monthlyCost = (subPriceTRY / 7) * 30;
+            break;
+          case '2 Haftada Bir':
+            monthlyCost = (subPriceTRY / 14) * 30;
+            break;
+          case 'Aylık':
+            monthlyCost = subPriceTRY;
+            break;
+          case '3 Aylık':
+            monthlyCost = subPriceTRY / 3;
+            break;
+          case '6 Aylık':
+            monthlyCost = subPriceTRY / 6;
+            break;
+          case 'Yıllık':
+            monthlyCost = subPriceTRY / 12;
+            break;
+          case 'Özel':
+            if (sub.cycleDays > 0) {
+              monthlyCost = (subPriceTRY / sub.cycleDays) * 30;
+            }
+            break;
+        }
+        total += monthlyCost;
       }
     }
     return total;

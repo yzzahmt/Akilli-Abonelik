@@ -20,10 +20,7 @@ class ExportUtils {
     final file = File(path);
     await file.writeAsString(csv.toString());
 
-    await Share.shareXFiles(
-      [XFile(path, mimeType: 'text/csv')],
-      text: 'SubsTrack Aboneliklerim',
-    );
+    await SharePlus.instance.share(ShareParams(files: [XFile(path, mimeType: 'text/csv')], text: 'SubsTrack Aboneliklerim',));
   }
 
   static Future<void> exportToCalendar(List<Subscription> subs) async {
@@ -77,9 +74,6 @@ class ExportUtils {
     final file = File(path);
     await file.writeAsString(jsonString);
 
-    await Share.shareXFiles(
-      [XFile(path, mimeType: 'application/json')],
-      text: 'SubsTrack Yedek Dosyası',
-    );
+    await SharePlus.instance.share(ShareParams(files: [XFile(path, mimeType: 'application/json')], text: 'SubsTrack Yedek Dosyası',));
   }
 }

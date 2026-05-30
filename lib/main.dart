@@ -2,81 +2,63 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'screens/home_screen.dart';
-import 'screens/privacy_agreement_screen.dart';
 import 'screens/splash_screen.dart';
 import 'theme/app_theme.dart';
+import 'services/notification_service.dart';
+import 'services/ad_service.dart';
+import 'providers/settings_provider.dart';
+import 'package:home_widget/home_widget.dart';
 
-void main() {
+final RouteObserver<ModalRoute<void>> routeObserver =
+    RouteObserver<ModalRoute<void>>();
+
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService.init();
+  HomeWidget.setAppGroupId('group.com.yzzahmt.abonetakip');
   Intl.defaultLocale = 'tr_TR';
 
-  runApp(
-    const ProviderScope(
-      child: SubsTrackApp(),
-    ),
-  );
+  // Google Play / RevenueCat Ayarları
+  // API Key'inizi buraya girin ve yorum satırlarını kaldırın:
+  // await Purchases.setLogLevel(LogLevel.debug);
+  // PurchasesConfiguration configuration = PurchasesConfiguration("goog_BURAYA_REVENUECAT_API_KEY_GELECEK");
+  // await Purchases.configure(configuration);
+
+  runApp(const ProviderScope(child: SubsTrackApp()));
 }
 
-class SubsTrackApp extends StatelessWidget {
+class SubsTrackApp extends ConsumerWidget {
   const SubsTrackApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp(
       title: 'SubsTrack — Abonelik Takibi',
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.dark,
       theme: AppTheme.darkTheme,
       darkTheme: AppTheme.darkTheme,
+      navigatorObservers: [routeObserver, _AdRouteObserver(ref)],
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      supportedLocales: const [
-        Locale('tr', 'TR'),
-        Locale('en', 'US'),
-      ],
-      home: const AppInitializationScreen(),
+      supportedLocales: const [Locale('tr', 'TR'), Locale('en', 'US')],
+      home: const SplashScreen(),
     );
   }
 }
 
-class AppInitializationScreen extends StatefulWidget {
-  const AppInitializationScreen({super.key});
+class _AdRouteObserver extends NavigatorObserver {
+  final WidgetRef ref;
+  _AdRouteObserver(this.ref);
 
   @override
-  State<AppInitializationScreen> createState() => _AppInitializationScreenState();
-}
-
-class _AppInitializationScreenState extends State<AppInitializationScreen> {
-  bool _showSplash = true;
-  bool _isKvkkAccepted = false;
-
-  @override
-  Widget build(BuildContext context) {
-    if (_showSplash) {
-      return PremiumSplashScreen(
-        onInitializationComplete: (isKvkkAccepted) {
-          setState(() {
-            _isKvkkAccepted = isKvkkAccepted;
-            _showSplash = false;
-          });
-        },
-      );
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    super.didPush(route, previousRoute);
+    if (previousRoute != null) {
+      AdService.onScreenChanged(ref.read(isPremiumProvider));
     }
-
-    if (!_isKvkkAccepted) {
-      return PrivacyAgreementScreen(
-        onAccepted: () {
-          setState(() {
-            _isKvkkAccepted = true;
-          });
-        },
-      );
-    }
-
-    return const HomeScreen();
   }
 }
