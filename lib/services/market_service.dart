@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 class MarketService {
   static const _base = 'https://query2.finance.yahoo.com/v8/finance/chart/';
 
-  static Future<Map<String, dynamic>> fetchQuote(String symbol) async {
+  static Future<Map<String, dynamic>> fetchQuoteRaw(String symbol) async {
     try {
       final ts = DateTime.now().millisecondsSinceEpoch;
       final uri = Uri.parse('$_base$symbol?interval=1m&range=1d&_t=$ts');
@@ -60,6 +60,36 @@ class MarketService {
     }
   }
 
+  static Future<Map<String, dynamic>> fetchQuote(String symbol) async {
+    if (symbol == 'GC=F') {
+      try {
+        final onsQuote = await fetchQuoteRaw('GC=F');
+        final usdTryQuote = await fetchQuoteRaw('USDTRY=X');
+        
+        final double onsPrice = onsQuote['price'] ?? 0.0;
+        final double usdTry = usdTryQuote['price'] ?? 32.5;
+        
+        final double gramPriceTry = (onsPrice / 31.1034768) * usdTry;
+        final double prevOnsPrice = onsQuote['prevClose'] ?? onsPrice;
+        final double prevGramPriceTry = (prevOnsPrice / 31.1034768) * (usdTryQuote['prevClose'] ?? usdTry);
+        
+        return {
+          'price': gramPriceTry,
+          'prevClose': prevGramPriceTry,
+          'currency': 'TRY',
+          'change': gramPriceTry - prevGramPriceTry,
+          'changePercent': prevGramPriceTry > 0 ? ((gramPriceTry - prevGramPriceTry) / prevGramPriceTry) * 100 : 0.0,
+          'high': (onsQuote['high'] ?? onsPrice) / 31.1034768 * usdTry,
+          'low': (onsQuote['low'] ?? onsPrice) / 31.1034768 * usdTry,
+          'volume': onsQuote['volume'] ?? 0,
+        };
+      } catch (e) {
+        return {'error': e.toString()};
+      }
+    }
+    return fetchQuoteRaw(symbol);
+  }
+
   static List<Map<String, String>> getSuggestedSymbols(String type) {
     switch (type) {
       case 'stock':
@@ -110,7 +140,7 @@ class MarketService {
         ];
       case 'gold':
         return [
-          {'name': 'Altın / Ons', 'symbol': 'GC=F'},
+          {'name': 'Gram Altın (TL)', 'symbol': 'GC=F'},
           {'name': 'Gümüş / Ons', 'symbol': 'SI=F'},
           {'name': 'Ham Petrol', 'symbol': 'CL=F'},
           {'name': 'Doğalgaz', 'symbol': 'NG=F'},

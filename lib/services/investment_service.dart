@@ -7,8 +7,7 @@ class InvestmentService {
   static const _baseUrl =
       'https://query2.finance.yahoo.com/v8/finance/chart';
 
-  // Anlık fiyat çek — Yahoo Finance
-  static Future<double?> fetchCurrentPrice(String symbol) async {
+  static Future<double?> fetchCurrentPriceRaw(String symbol) async {
     try {
       final url = Uri.parse(
           '$_baseUrl/$symbol?interval=1d&range=1d');
@@ -31,6 +30,18 @@ class InvestmentService {
       debugPrint('InvestmentService fetchCurrentPrice error: $e');
     }
     return null;
+  }
+
+  static Future<double?> fetchCurrentPrice(String symbol) async {
+    if (symbol == 'GC=F') {
+      final onsPrice = await fetchCurrentPriceRaw('GC=F');
+      final usdTry = await fetchCurrentPriceRaw('USDTRY=X');
+      if (onsPrice != null && usdTry != null) {
+        return (onsPrice / 31.1034768) * usdTry;
+      }
+      return null;
+    }
+    return fetchCurrentPriceRaw(symbol);
   }
 
   // Döviz kuru çek (USDTRY=X)
@@ -67,7 +78,7 @@ class InvestmentService {
         ];
       case 'gold':
         return [
-          {'name': 'Altın (Ons)', 'symbol': 'GC=F'},
+          {'name': 'Gram Altın (TL)', 'symbol': 'GC=F'},
           {'name': 'Gümüş (Ons)', 'symbol': 'SI=F'},
         ];
       case 'currency':

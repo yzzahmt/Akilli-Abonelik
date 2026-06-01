@@ -184,26 +184,28 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                     },
                   ),
                   _DrawerItem(
-                    icon: Icons.savings_rounded,
-                    outlineIcon: Icons.savings_outlined,
-                    label: 'Kumbara',
+                    icon: Icons.trending_up_rounded,
+                    outlineIcon: Icons.trending_up_outlined,
+                    label: 'Yatırım Takibi',
+                    isNew: true,
                     onTap: () {
                       Navigator.of(context).pop();
                       Navigator.of(context).push(
                         MaterialPageRoute(
-                            builder: (_) => const PiggyBankScreen()),
+                            builder: (_) => const InvestmentScreen()),
                       );
                     },
                   ),
                   _DrawerItem(
-                    icon: Icons.bar_chart_rounded,
-                    outlineIcon: Icons.bar_chart_outlined,
-                    label: 'Harcama Grafiği',
+                    icon: Icons.calendar_month_rounded,
+                    outlineIcon: Icons.calendar_today_outlined,
+                    label: 'Takvim',
+                    isNew: true,
                     onTap: () {
                       Navigator.of(context).pop();
                       Navigator.of(context).push(
                         MaterialPageRoute(
-                            builder: (_) => const SpendingChartScreen()),
+                            builder: (_) => const CalendarScreen()),
                       );
                     },
                   ),
@@ -220,26 +222,26 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
                     },
                   ),
                   _DrawerItem(
-                    icon: Icons.trending_up_rounded,
-                    outlineIcon: Icons.trending_up_outlined,
-                    label: 'Yatırım Takibi',
+                    icon: Icons.bar_chart_rounded,
+                    outlineIcon: Icons.bar_chart_outlined,
+                    label: 'Harcama Grafiği',
                     onTap: () {
                       Navigator.of(context).pop();
                       Navigator.of(context).push(
                         MaterialPageRoute(
-                            builder: (_) => const InvestmentScreen()),
+                            builder: (_) => const SpendingChartScreen()),
                       );
                     },
                   ),
                   _DrawerItem(
-                    icon: Icons.calendar_month_rounded,
-                    outlineIcon: Icons.calendar_today_outlined,
-                    label: 'Takvim',
+                    icon: Icons.savings_rounded,
+                    outlineIcon: Icons.savings_outlined,
+                    label: 'Kumbara',
                     onTap: () {
                       Navigator.of(context).pop();
                       Navigator.of(context).push(
                         MaterialPageRoute(
-                            builder: (_) => const CalendarScreen()),
+                            builder: (_) => const PiggyBankScreen()),
                       );
                     },
                   ),
@@ -330,6 +332,7 @@ class _DrawerItem extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
   final bool isActive;
+  final bool isNew;
 
   const _DrawerItem({
     required this.icon,
@@ -337,6 +340,7 @@ class _DrawerItem extends StatelessWidget {
     required this.label,
     required this.onTap,
     this.isActive = false,
+    this.isNew = false,
   });
 
   @override
@@ -353,6 +357,23 @@ class _DrawerItem extends StatelessWidget {
           fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
         ),
       ),
+      trailing: isNew
+          ? Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppColors.accentPurple.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                'YENİ',
+                style: GoogleFonts.inter(
+                  fontSize: 9,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.accentPurple,
+                ),
+              ),
+            )
+          : null,
       horizontalTitleGap: 8,
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),

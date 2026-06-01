@@ -53,7 +53,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       gradient: [Color(0xFFFBBF24), Color(0xFFF59E0B)],
       title: 'Kaydırma kısayolları',
       description:
-          'Ana ekranda sağa kaydır → Harcama Grafiği\nSola kaydır → Bildirim Ayarları\nAşağı çek → Yenile\nAbonelik kartına uzun bas → Hızlı menü',
+          '1 Parmak Sağa/Sola → Grafik / Ayarlar\n'
+          '2 Parmak Sıkıştır (Pinch) → Kumbara 🪙\n'
+          '2 Parmak Genişlet (Expand) → Grafik 📈\n'
+          '2 Parmak Yukarı/Aşağı → Yatırım 📊 / Takvim 📅',
       tag: '03',
     ),
     _OnboardingPage(

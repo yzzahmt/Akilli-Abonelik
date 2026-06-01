@@ -272,6 +272,123 @@ class _HomeTabBodyState extends ConsumerState<_HomeTabBody> {
   bool _showProArrow = false;
   Timer? _investmentTimer;
 
+  Offset _initialFocalPoint = Offset.zero;
+  int _pointerCount = 0;
+  bool _gestureTriggered = false;
+
+  void _handlePinch() {
+    Navigator.of(context).push(PageRouteBuilder(
+      pageBuilder: (context, animation, secondaryAnimation) => const PiggyBankScreen(),
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        final scaleAnimation = Tween<double>(begin: 0.3, end: 1.0).animate(
+          CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
+        );
+        final fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+          CurvedAnimation(parent: animation, curve: Curves.easeOut),
+        );
+        return ScaleTransition(
+          scale: scaleAnimation,
+          child: FadeTransition(
+            opacity: fadeAnimation,
+            child: child,
+          ),
+        );
+      },
+      transitionDuration: const Duration(milliseconds: 550),
+    ));
+  }
+
+  void _handleExpand() {
+    Navigator.of(context).push(PageRouteBuilder(
+      pageBuilder: (context, animation, secondaryAnimation) => const SpendingChartScreen(),
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        final scaleAnimation = Tween<double>(begin: 2.0, end: 1.0).animate(
+          CurvedAnimation(parent: animation, curve: Curves.easeOutQuint),
+        );
+        final fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+          CurvedAnimation(parent: animation, curve: Curves.easeOut),
+        );
+        return ScaleTransition(
+          scale: scaleAnimation,
+          child: FadeTransition(
+            opacity: fadeAnimation,
+            child: child,
+          ),
+        );
+      },
+      transitionDuration: const Duration(milliseconds: 500),
+    ));
+  }
+
+  void _handleTwoFingerSwipeUp() {
+    Navigator.of(context).push(PageRouteBuilder(
+      pageBuilder: (context, animation, secondaryAnimation) => const InvestmentScreen(),
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        final slideAnimation = Tween<Offset>(begin: const Offset(0.0, 1.0), end: Offset.zero).animate(
+          CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
+        );
+        final fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+          CurvedAnimation(parent: animation, curve: Curves.easeOut),
+        );
+        return SlideTransition(
+          position: slideAnimation,
+          child: FadeTransition(
+            opacity: fadeAnimation,
+            child: child,
+          ),
+        );
+      },
+      transitionDuration: const Duration(milliseconds: 600),
+    ));
+  }
+
+  void _handleTwoFingerSwipeDown() {
+    Navigator.of(context).push(PageRouteBuilder(
+      pageBuilder: (context, animation, secondaryAnimation) => const CalendarScreen(),
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        final slideAnimation = Tween<Offset>(begin: const Offset(0.0, -1.0), end: Offset.zero).animate(
+          CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+        );
+        final rotationAnimation = Tween<double>(begin: -0.05, end: 0.0).animate(
+          CurvedAnimation(parent: animation, curve: Curves.easeOut),
+        );
+        return SlideTransition(
+          position: slideAnimation,
+          child: RotationTransition(
+            turns: rotationAnimation,
+            child: child,
+          ),
+        );
+      },
+      transitionDuration: const Duration(milliseconds: 500),
+    ));
+  }
+
+  void _handleHorizontalSwipeRight() {
+    Navigator.of(context).push(PageRouteBuilder(
+      pageBuilder: (_, a, __) => const SpendingChartScreen(),
+      transitionsBuilder: (_, anim, __, child) => SlideTransition(
+        position: Tween<Offset>(begin: const Offset(1.0, 0), end: Offset.zero).animate(anim),
+        child: child,
+      ),
+      transitionDuration: const Duration(milliseconds: 300),
+    ));
+  }
+
+  void _handleHorizontalSwipeLeft() {
+    Navigator.of(context).push(PageRouteBuilder(
+      pageBuilder: (_, a, __) => Scaffold(
+        backgroundColor: AppColors.background,
+        body: const SettingsScreen(),
+      ),
+      transitionsBuilder: (_, anim, __, child) => SlideTransition(
+        position: Tween<Offset>(begin: const Offset(-1.0, 0), end: Offset.zero).animate(anim),
+        child: child,
+      ),
+      transitionDuration: const Duration(milliseconds: 300),
+    ));
+  }
+
   @override
   void initState() {
     super.initState();
@@ -487,50 +604,64 @@ class _HomeTabBodyState extends ConsumerState<_HomeTabBody> {
     return SafeArea(
       // SubsTrack yeni özellik — Swipe kısayolları (Bölüm 5)
       child: GestureDetector(
-        onPanStart: (details) {
+        onScaleStart: (details) {
+          _initialFocalPoint = details.localFocalPoint;
+          _pointerCount = details.pointerCount;
+          _gestureTriggered = false;
         },
-        onPanEnd: (details) {
-          final dx = details.velocity.pixelsPerSecond.dx;
-          final dy = details.velocity.pixelsPerSecond.dy;
-          final absDx = dx.abs();
-          final absDy = dy.abs();
-
-          // Yatay kaydırma (horizontal baskın)
-          if (absDx > absDy && absDx > 300) {
-            if (dx > 0) {
-              // Sağa kaydır → Harcama Grafiği
-              Navigator.of(context).push(PageRouteBuilder(
-                pageBuilder: (_, a, __) =>
-                    const SpendingChartScreen(),
-                transitionsBuilder: (_, anim, __, child) =>
-                    SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(1.0, 0),
-                    end: Offset.zero,
-                  ).animate(anim),
-                  child: child,
-                ),
-                transitionDuration:
-                    const Duration(milliseconds: 300),
-              ));
-            } else {
-              // Sola kaydır → Ayarlar
-              Navigator.of(context).push(PageRouteBuilder(
-                pageBuilder: (_, a, __) => Scaffold(
-                  backgroundColor: AppColors.background,
-                  body: const SettingsScreen(),
-                ),
-                transitionsBuilder: (_, anim, __, child) =>
-                    SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(-1.0, 0),
-                    end: Offset.zero,
-                  ).animate(anim),
-                  child: child,
-                ),
-                transitionDuration:
-                    const Duration(milliseconds: 300),
-              ));
+        onScaleUpdate: (details) {
+          if (_gestureTriggered) return;
+          
+          final pointerCount = details.pointerCount;
+          
+          if (pointerCount == 2) {
+            final scale = details.scale;
+            
+            // 2-finger Pinch (sıkıştırma)
+            if (scale < 0.7) {
+              _gestureTriggered = true;
+              _handlePinch();
+              return;
+            }
+            
+            // 2-finger Expand (genişletme)
+            if (scale > 1.4) {
+              _gestureTriggered = true;
+              _handleExpand();
+              return;
+            }
+            
+            // 2-finger vertical swipe
+            final currentFocalPoint = details.localFocalPoint;
+            final dy = currentFocalPoint.dy - _initialFocalPoint.dy;
+            
+            if (dy < -120) {
+              _gestureTriggered = true;
+              _handleTwoFingerSwipeUp();
+              return;
+            } else if (dy > 120) {
+              _gestureTriggered = true;
+              _handleTwoFingerSwipeDown();
+              return;
+            }
+          }
+        },
+        onScaleEnd: (details) {
+          if (_gestureTriggered) return;
+          
+          if (_pointerCount == 1) {
+            final velocity = details.velocity.pixelsPerSecond;
+            final dx = velocity.dx;
+            final dy = velocity.dy;
+            final absDx = dx.abs();
+            final absDy = dy.abs();
+            
+            if (absDx > absDy && absDx > 300) {
+              if (dx > 0) {
+                _handleHorizontalSwipeRight();
+              } else {
+                _handleHorizontalSwipeLeft();
+              }
             }
           }
         },
@@ -1115,6 +1246,141 @@ class _HomeTabBodyState extends ConsumerState<_HomeTabBody> {
                 ),
               ],
             ).animate().fade(duration: 400.ms).slideY(begin: 0.1, end: 0.0),
+
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF141829),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.glassBorder, width: 1),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Hızlı Keşfet & Kısayollar',
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppColors.accentPurple.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              'YENİ HAREKETLER',
+                              style: GoogleFonts.inter(
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.accentPurple,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: _handleTwoFingerSwipeUp,
+                              child: Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surface1,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: AppColors.borderSubtle, width: 1),
+                                ),
+                                child: Column(
+                                  children: [
+                                    const Icon(Icons.trending_up_rounded, color: AppColors.activeGreen, size: 28),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Yatırım Takibi',
+                                      style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '2 Parmak Yukarı 👆',
+                                      style: GoogleFonts.inter(fontSize: 9, color: AppColors.textSecondary),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: _handleTwoFingerSwipeDown,
+                              child: Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surface1,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: AppColors.borderSubtle, width: 1),
+                                ),
+                                child: Column(
+                                  children: [
+                                    const Icon(Icons.calendar_month_rounded, color: AppColors.accentPurple, size: 28),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Takvim',
+                                      style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '2 Parmak Aşağı 👇',
+                                      style: GoogleFonts.inter(fontSize: 9, color: AppColors.textSecondary),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: _handlePinch,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surface1,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.savings_rounded, color: Color(0xFFFBBF24), size: 18),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Kumbara (2 Parmak Sıkıştır)',
+                                      style: GoogleFonts.inter(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w500),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ).animate().fade(delay: 200.ms).slideY(begin: 0.1, end: 0.0),
 
                 const SizedBox(height: 22),
 
