@@ -16,6 +16,7 @@ import '../services/backup_service.dart';
 import 'insights_screen.dart';
 import 'kvkk_screen.dart';
 import 'ai_assistant_screen.dart';
+import 'pro_unlock_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -78,66 +79,8 @@ Manage Netflix, Spotify, YouTube Premium and more in one app!
   }
 
   void _showPremiumDialog(BuildContext context, String lang) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.surface1,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            const Text('⭐', style: TextStyle(fontSize: 22)),
-            const SizedBox(width: 8),
-            Text(
-              'SubsTrack Pro',
-              style: GoogleFonts.inter(
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _proFeatureRow(lang == 'TR' ? 'Reklamları tamamen kaldırır' : 'Completely removes ads'),
-            _proFeatureRow(lang == 'TR' ? 'CSV olarak dışa aktarma' : 'Export to CSV format'),
-            _proFeatureRow(lang == 'TR' ? 'Öncelikli bildirimler' : 'Priority notifications'),
-            _proFeatureRow(lang == 'TR' ? 'Tüm Pro özellikler açık' : 'Unlock all premium features'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(
-              lang == 'TR' ? 'Vazgeç' : 'Cancel',
-              style: GoogleFonts.inter(color: AppColors.textSecondary),
-            ),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.accentPurple,
-              foregroundColor: AppColors.textPrimary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            onPressed: () {
-              // Activate Premium
-              ref.read(isPremiumProvider.notifier).togglePermanentPremium(true);
-              Navigator.of(context).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(lang == 'TR' ? '🎉 SubsTrack Pro aktifleştirildi!' : '🎉 SubsTrack Pro activated!'),
-                  backgroundColor: AppColors.activeGreen,
-                ),
-              );
-            },
-            child: Text(
-              lang == 'TR' ? 'Pro\'ya Geç' : 'Get Pro',
-              style: GoogleFonts.inter(fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const ProUnlockScreen()),
     );
   }
 
@@ -254,7 +197,9 @@ Manage Netflix, Spotify, YouTube Premium and more in one app!
               // Premium Banner Card
               if (!isPremium)
                 GestureDetector(
-                  onTap: () {}, // Disabled for now
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const ProUnlockScreen()),
+                  ),
                   child: Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(18),
@@ -291,8 +236,8 @@ Manage Netflix, Spotify, YouTube Premium and more in one app!
                               const SizedBox(height: 4),
                               Text(
                                 lang == 'TR'
-                                    ? 'Reklamları kaldır, CSV dışa aktarma ve daha fazlası.'
-                                    : 'Remove ads, export CSV, and more.',
+                                    ? 'Reklamları kaldır, tüm özellikleri aç.'
+                                    : 'Remove ads, unlock all features.',
                                 style: GoogleFonts.inter(
                                   fontSize: 12,
                                   color: AppColors.textPrimary.withValues(alpha: 0.85),
@@ -312,28 +257,15 @@ Manage Netflix, Spotify, YouTube Premium and more in one app!
                             ),
                             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                           ),
-                          onPressed: () {}, // Disabled for now
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                lang == 'TR' ? 'Yükselt' : 'Upgrade',
-                                style: GoogleFonts.inter(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  decoration: TextDecoration.lineThrough,
-                                  color: AppColors.accentPurple.withValues(alpha: 0.5),
-                                ),
-                              ),
-                              Text(
-                                lang == 'TR' ? 'Çok Yakında\nAktif' : 'Coming\nSoon',
-                                textAlign: TextAlign.center,
-                                style: GoogleFonts.inter(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                            ],
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const ProUnlockScreen()),
+                          ),
+                          child: Text(
+                            lang == 'TR' ? 'Pro\'ya Geç' : 'Get Pro',
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ],

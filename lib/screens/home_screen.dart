@@ -1,5 +1,5 @@
-// SubsTrack yeni özellik — Sol Drawer + Swipe Kısayolları entegrasyonu (Bölüm 4 & 5)
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -17,6 +17,7 @@ import '../widgets/ai_assistant_button.dart'; // SubsTrack yeni özellik — BUR
 import '../services/ad_service.dart';
 import '../services/database_service.dart'; // SubsTrack yeni özellik — BURAYA EKLE
 import '../services/market_service.dart';
+import '../services/currency_service.dart';
 import '../utils/translations.dart';
 import 'add_subscription_screen.dart';
 import 'calendar_screen.dart';
@@ -269,12 +270,18 @@ class _HomeTabBodyState extends ConsumerState<_HomeTabBody> {
   double _investmentCost = 0;
   double _investmentTotal = 0;
   bool _showProArrow = false;
+  Timer? _investmentTimer;
 
   @override
   void initState() {
     super.initState();
     _loadInvestments();
     _checkFirstTimeProArrow();
+    
+    // Her 3 saniyede bir yatırımları anlık güncelle
+    _investmentTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      _loadInvestments();
+    });
   }
 
   Future<void> _checkFirstTimeProArrow() async {
@@ -294,16 +301,31 @@ class _HomeTabBodyState extends ConsumerState<_HomeTabBody> {
     final invs = await DBService.instance.getAllInvestments();
     double cost = 0;
     double total = 0;
+
+    final usdRate = await CurrencyService.getUSDToTRYRate();
+
+    // Maliyeti hemen topla
     for (var inv in invs) {
-      cost += inv.totalBuyCost;
+      final rate = (inv.currency == 'USD') ? usdRate : 1.0;
+      cost += inv.totalBuyCost * rate;
+    }
+
+    // Fiyatları paralel (aynı anda) çekerek hızlandır
+    final futures = invs.map((inv) async {
       try {
         final quote = await MarketService.fetchQuote(inv.symbol);
         double price = (quote['price'] as num?)?.toDouble() ?? inv.buyPrice;
-        total += inv.quantity * price;
+        final rate = (inv.currency == 'USD') ? usdRate : 1.0;
+        return inv.quantity * price * rate;
       } catch (_) {
-        total += inv.totalBuyCost;
+        final rate = (inv.currency == 'USD') ? usdRate : 1.0;
+        return inv.totalBuyCost * rate;
       }
-    }
+    });
+
+    final results = await Future.wait(futures);
+    total = results.fold(0.0, (sum, val) => sum + val);
+
     if (mounted) {
       setState(() {
         _investmentCost = cost;
@@ -314,6 +336,7 @@ class _HomeTabBodyState extends ConsumerState<_HomeTabBody> {
 
   @override
   void dispose() {
+    _investmentTimer?.cancel();
     _heroPageController.dispose();
     super.dispose();
   }

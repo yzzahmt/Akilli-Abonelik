@@ -15,36 +15,45 @@ class MarketService {
           'Accept': 'application/json'
         },
       ).timeout(const Duration(seconds: 10));
+
       if (resp.statusCode != 200) throw Exception('HTTP ${resp.statusCode}');
       final json = jsonDecode(resp.body);
-      final meta = json['chart']['result'][0]['meta'];
+      final result = json['chart']['result'][0];
+      final meta = result['meta'];
       
       double price = (meta['regularMarketPrice'] as num?)?.toDouble() ?? 0.0;
       
-      try {
-        final indicators = json['chart']['result'][0]['indicators']['quote'][0];
-        final List<dynamic>? closes = indicators['close'];
-        if (closes != null && closes.isNotEmpty) {
-          for (int i = closes.length - 1; i >= 0; i--) {
-            if (closes[i] != null) {
-              price = (closes[i] as num).toDouble();
-              break;
+      if (price == 0.0) {
+        try {
+          final indicators = result['indicators']['quote'][0];
+          final List<dynamic>? closes = indicators['close'];
+          if (closes != null && closes.isNotEmpty) {
+            for (int i = closes.length - 1; i >= 0; i--) {
+              if (closes[i] != null) {
+                price = (closes[i] as num).toDouble();
+                break;
+              }
             }
           }
-        }
-      } catch (_) {}
+        } catch (_) {}
+      }
+
       final prevCloseNum = meta['previousClose'] ?? meta['chartPreviousClose'] ?? price;
-      final double prevClose = (prevCloseNum as num?)?.toDouble() ?? 0.0;
+      double prevClose = (prevCloseNum as num?)?.toDouble() ?? 0.0;
+      
+      final currency = meta['currency'] as String? ?? (symbol.endsWith('IS') ? 'TRY' : 'USD');
+      final highNum = meta['regularMarketDayHigh'] ?? price * 1.02;
+      final lowNum = meta['regularMarketDayLow'] ?? price * 0.98;
       
       return {
         'price': price,
         'prevClose': prevClose,
-        'currency': meta['currency'] as String? ?? 'TRY',
+        'currency': currency,
         'change': price - prevClose,
         'changePercent': prevClose > 0 ? ((price - prevClose) / prevClose) * 100 : 0.0,
-        'high': (meta['regularMarketDayHigh'] as num?)?.toDouble(),
-        'low': (meta['regularMarketDayLow'] as num?)?.toDouble(),
-        'volume': meta['regularMarketVolume'],
+        'high': (highNum as num).toDouble(),
+        'low': (lowNum as num).toDouble(),
+        'volume': meta['regularMarketVolume'] ?? 0,
       };
     } catch (e) {
       return {'error': e.toString()};

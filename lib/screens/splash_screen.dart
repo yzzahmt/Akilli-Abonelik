@@ -43,13 +43,18 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
         DBService.instance.database,
         NotificationService.init(),
         AdService.init(),
-      ]);
+      ]).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => [],
+      );
     } catch (e) {
-      debugPrint('Splash screen initialization error: \$e');
+      debugPrint('Splash screen initialization error: $e');
     }
 
-    await _sequenceController.forward();
-    _navigate();
+    if (mounted) {
+      await _sequenceController.forward();
+      _navigate();
+    }
   }
 
   void _navigate() async {

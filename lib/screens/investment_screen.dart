@@ -7,6 +7,7 @@ import '../constants/app_colors.dart';
 import '../models/investment_model.dart';
 import '../services/database_service.dart';
 import '../services/market_service.dart';
+import '../services/currency_service.dart';
 import '../services/activity_tracker.dart';
 import '../widgets/ai_assistant_button.dart';
 
@@ -23,12 +24,13 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
   final Map<String, Map<String, dynamic>> _quoteCache = {};
   DateTime _lastUpdate = DateTime.now();
   Timer? _refreshTimer;
+  double _usdToTryRate = 32.50;
 
   @override
   void initState() {
     super.initState();
     _loadInvestments();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 3), (_) {
       _refreshQuotes();
     });
   }
@@ -60,6 +62,7 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
       }
     });
     await Future.wait(futures);
+    _usdToTryRate = await CurrencyService.getUSDToTRYRate();
     if (mounted) {
       setState(() {
         _lastUpdate = DateTime.now();
@@ -72,13 +75,20 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
     for (var inv in _investments) {
       final cached = _quoteCache[inv.symbol];
       final price = cached?['price'] as double?;
-      total += inv.quantity * (price ?? inv.buyPrice);
+      final rate = (inv.currency == 'USD') ? _usdToTryRate : 1.0;
+      total += inv.quantity * (price ?? inv.buyPrice) * rate;
     }
     return total;
   }
 
-  double _calcTotalCost() =>
-      _investments.fold(0.0, (sum, inv) => sum + inv.totalBuyCost);
+  double _calcTotalCost() {
+    double total = 0;
+    for (var inv in _investments) {
+      final rate = (inv.currency == 'USD') ? _usdToTryRate : 1.0;
+      total += inv.totalBuyCost * rate;
+    }
+    return total;
+  }
 
   void _showAddDialog() {
     showModalBottomSheet(
@@ -375,9 +385,10 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
                   final dailyChangePct = hasQuote ? (quote['changePercent'] as double) : 0.0;
                   final isDailyProfit = dailyChange >= 0;
 
-                  final cost = displayInv.totalBuyCost;
-                  final value = displayInv.totalCurrentValue;
-                  final pnl = displayInv.profitLoss;
+                  final double rate = (inv.currency == 'USD') ? _usdToTryRate : 1.0;
+                  final cost = displayInv.totalBuyCost * rate;
+                  final value = displayInv.totalCurrentValue * rate;
+                  final pnl = displayInv.profitLoss * rate;
                   final pnlPct = displayInv.profitLossPercent;
                   final isProfit = pnl >= 0;
                   
@@ -481,7 +492,7 @@ class _InvestmentScreenState extends State<InvestmentScreen> {
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 Text(
-                                  '${inv.quantity} x ₺${inv.buyPrice.toStringAsFixed(2)}',
+                                  '${inv.quantity} x ${inv.currency == 'USD' ? '\$' : '₺'}${inv.buyPrice.toStringAsFixed(2)}',
                                   style: GoogleFonts.inter(
                                     fontSize: 10,
                                     color: Colors.grey,
@@ -575,6 +586,7 @@ class _AddInvestmentSheetState extends State<_AddInvestmentSheet> {
   final _quantityController = TextEditingController();
   final _buyPriceController = TextEditingController();
   bool _isSaving = false;
+  String _detectedCurrency = 'TRY';
 
   static const _types = [
     {'key': 'stock', 'label': 'Hisse', 'emoji': '📈'},
@@ -595,6 +607,7 @@ class _AddInvestmentSheetState extends State<_AddInvestmentSheet> {
       _symbolController.text = inv.symbol;
       _quantityController.text = inv.quantity.toString();
       _buyPriceController.text = inv.buyPrice.toString();
+      _detectedCurrency = inv.currency;
     }
   }
 
@@ -616,6 +629,7 @@ class _AddInvestmentSheetState extends State<_AddInvestmentSheet> {
         _isFetchingPrice = false;
         if (!quote.containsKey('error') && quote['price'] != null) {
           _buyPriceController.text = quote['price'].toString();
+          _detectedCurrency = quote['currency'] ?? 'TRY';
         }
       });
     }
@@ -633,7 +647,7 @@ class _AddInvestmentSheetState extends State<_AddInvestmentSheet> {
       quantity: double.parse(_quantityController.text.trim()),
       buyPrice: double.parse(_buyPriceController.text.trim()),
       buyDate: DateTime.now().toIso8601String(),
-      currency: 'TRY',
+      currency: _detectedCurrency,
       createdAt: widget.investmentToEdit?.createdAt ??
           DateTime.now().toIso8601String(),
     );

@@ -14,13 +14,26 @@ class DBService {
     if (_database != null) return _database!;
     try {
       _database = await _initDB('subs_track.db');
-    } catch (_) {
+    } catch (e) {
+      // İlk açılış başarısız olduysa bozuk DB'yi sil ve tekrar dene
       try {
         final dbPath = await getDatabasesPath();
         final path = join(dbPath, 'subs_track.db');
         await deleteDatabase(path);
         _database = await _initDB('subs_track.db');
-      } catch (_) {}
+      } catch (e2) {
+        // Her ikisi de başarısız olduysa yeni bir DB oluştur
+        try {
+          _database = await openDatabase(
+            ':memory:',
+            version: 7,
+            onCreate: _createDB,
+          );
+        } catch (_) {}
+      }
+    }
+    if (_database == null) {
+      throw Exception('Veritabanı açılamadı. Lütfen uygulamayı yeniden başlatın.');
     }
     return _database!;
   }
@@ -110,12 +123,17 @@ class DBService {
   }
 
   Future<void> _upgradeDB(Database db, int oldVersion, int newVersion) async {
+    // v3'ten önceyse tüm şemayı baştan oluştur
     if (oldVersion < 3) {
       await db.execute('DROP TABLE IF EXISTS subscriptions');
       await db.execute('DROP TABLE IF EXISTS rates');
+      await db.execute('DROP TABLE IF EXISTS investments');
+      await db.execute('DROP TABLE IF EXISTS activity_logs');
+      await db.execute('DROP TABLE IF EXISTS cash_accounts');
       await _createDB(db, newVersion);
+      return; // _createDB zaten her şeyi oluşturdu, aşağıdaki adımları atla
     }
-    // SubsTrack yeni özellik — v4 yükseltme (Bölüm 7)
+    // v4 yükseltme — Yatırım tablosu
     if (oldVersion < 4) {
       await db.execute('''
         CREATE TABLE IF NOT EXISTS investments (
@@ -131,20 +149,26 @@ class DBService {
           created_at TEXT NOT NULL
         )
       ''');
-      // is_favorite kolonu — mevcut tabloya ekle
       try {
         await db.execute('ALTER TABLE subscriptions ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0');
       } catch (_) {}
     }
-    // SubsTrack yeni özellik — v5 yükseltme (Bölüm 8)
+    // v5 yükseltme — Fatura döngüsü & çoklu para birimi
     if (oldVersion < 5) {
       try {
         await db.execute("ALTER TABLE subscriptions ADD COLUMN billingCycle TEXT NOT NULL DEFAULT 'Aylık'");
+      } catch (_) {}
+      try {
         await db.execute('ALTER TABLE subscriptions ADD COLUMN cycleDays INTEGER NOT NULL DEFAULT 30');
+      } catch (_) {}
+      try {
         await db.execute("ALTER TABLE subscriptions ADD COLUMN currency TEXT NOT NULL DEFAULT 'TRY'");
+      } catch (_) {}
+      try {
         await db.execute('ALTER TABLE subscriptions ADD COLUMN originalPrice REAL NOT NULL DEFAULT 0.0');
       } catch (_) {}
     }
+    // v6 yükseltme — Aktivite logları
     if (oldVersion < 6) {
       await db.execute('''
         CREATE TABLE IF NOT EXISTS activity_logs (
@@ -155,6 +179,7 @@ class DBService {
         )
       ''');
     }
+    // v7 yükseltme — Nakit hesaplar
     if (oldVersion < 7) {
       await db.execute('''
         CREATE TABLE IF NOT EXISTS cash_accounts (

@@ -236,7 +236,7 @@ class _KvkkScreenState extends State<KvkkScreen> {
 const String _kvkkText =
     '''KİŞİSEL VERİLERİN KORUNMASI KANUNU KAPSAMINDA AYDINLATMA METNİ VE KULLANICI RIZASI
 
-Sürüm: 1.0 | Yürürlük Tarihi: [01.06.2026] | Hazırlayan: YAZIFY
+Sürüm: 4.0 | Yürürlük Tarihi: [01.06.2026] | Hazırlayan: YAZIFY
 
 MADDE 1 — VERİ SORUMLUSUNUN KİMLİĞİ VE İLETİŞİM BİLGİLERİ
 
@@ -265,7 +265,8 @@ MADDE 3 — İŞLENEN VERİ KATEGORİLERİ VE İŞLEME AMAÇLARI
 
 3.3. Reklam Amacıyla İşlenen Veriler:
    Google AdMob reklam hizmeti, uygulama içinde reklam gösterimi amacıyla kullanılmaktadır. AdMob, reklam kişiselleştirme amacıyla cihaz tanımlayıcısı (Advertising ID) ve konum verisi (yaklaşık) kullanabilir. Bu işleme Google LLC'nin gizlilik politikası kapsamında yürütülmekte olup Şirket söz konusu veri işleme faaliyetinin veri sorumlusu değil, veri işleyen konumundadır. Kullanıcılar, cihaz ayarlarından reklam kişiselleştirmeyi devre dışı bırakabilir.
-
+3.4. Yapay Zeka için işlenen veriler:
+   Uygulamada yapmış olduğunuz işlemler uygulama içerisine entegreli kendi yapay zekası ile geçici süreliğinde hafızada tutularak size daha iyi bir hizmet vermek için işlenir. Bu veriler hiçbir şekilde sunucularımıza aktarılmaz ve depolanmaz. 
 MADDE 4 — TALEP EDİLEN İZİNLER VE HUKUKİ GEREKÇELERİ
 
 Uygulama aşağıdaki sistem izinlerini talep etmektedir:

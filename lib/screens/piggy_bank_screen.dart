@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../constants/app_colors.dart';
 import '../services/database_service.dart';
 import '../services/market_service.dart';
+import '../services/currency_service.dart';
 import '../models/cash_account_model.dart';
 
 class PiggyBankScreen extends ConsumerStatefulWidget {
@@ -30,6 +31,7 @@ class _PiggyBankScreenState extends ConsumerState<PiggyBankScreen> {
   Future<void> _loadWealth() async {
     final invs = await DBService.instance.getAllInvestments();
     final cashAccounts = await DBService.instance.getAllCashAccounts();
+    final usdRate = await CurrencyService.getUSDToTRYRate();
 
     double total = 0;
     
@@ -37,13 +39,15 @@ class _PiggyBankScreenState extends ConsumerState<PiggyBankScreen> {
     for (var inv in invs) {
       try {
         final quote = await MarketService.fetchQuote(inv.symbol);
+        final rate = (inv.currency == 'USD') ? usdRate : 1.0;
         if (!quote.containsKey('error') && quote['price'] != null) {
-          total += (quote['price'] as double) * inv.quantity;
+          total += (quote['price'] as double) * inv.quantity * rate;
         } else {
-          total += inv.totalBuyCost;
+          total += inv.totalBuyCost * rate;
         }
       } catch (_) {
-        total += inv.totalBuyCost;
+        final rate = (inv.currency == 'USD') ? usdRate : 1.0;
+        total += inv.totalBuyCost * rate;
       }
     }
 

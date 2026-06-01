@@ -1,4 +1,12 @@
 {
-    "java.configuration.updateBuildConfiguration": "automatic",
-    "dart.flutterSdkPath": "/Volumes/HDD/Projeler/Flutter Path/flutter"
+    "dart.flutterSdkPath": "/Volumes/HDD/Projeler/Flutter Path/flutter",
+    "java.configuration.updateBuildConfiguration": "disabled",
+    "java.import.gradle.enabled": false,
+    "java.import.gradle.wrapper.enabled": false,
+    "java.import.exclusions": [
+        "**/android/**",
+        "**/build/**",
+        "**/.dart_tool/**"
+    ],
+    "java.jdt.ls.java.home": "/opt/homebrew/Cellar/openjdk@17/17.0.17/libexec/openjdk.jdk/Contents/Home"
 }

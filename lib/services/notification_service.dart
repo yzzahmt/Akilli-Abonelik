@@ -12,7 +12,7 @@ class NotificationService {
     if (_initialized) return;
     tz.initializeTimeZones();
     tz.setLocalLocation(tz.getLocation('Europe/Istanbul'));
-    const android = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const android = AndroidInitializationSettings('@mipmap/launcher_icon');
     const ios = DarwinInitializationSettings(
       requestAlertPermission: false,
       requestBadgePermission: false,
@@ -69,11 +69,6 @@ class NotificationService {
       final androidImplementation = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
       final result = await androidImplementation?.requestNotificationsPermission();
       isGranted = result ?? false;
-      
-      // Request Exact Alarm as well silently if notifications are granted
-      if (isGranted) {
-        await androidImplementation?.requestExactAlarmsPermission();
-      }
     } else if (Platform.isIOS) {
       final iosImplementation = _plugin.resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
       final result = await iosImplementation?.requestPermissions(alert: true, badge: true, sound: true);
@@ -101,46 +96,24 @@ class NotificationService {
       notifDate.year, notifDate.month, notifDate.day, 9, 0,
     );
 
-    try {
-      await _plugin.zonedSchedule(
-        id,
-        'Abonelik Yenileniyor: $name',
-        '$daysBefore gun sonra $amount $currency odeme yapilacak.',
-        tzDate,
-        const NotificationDetails(
-          android: AndroidNotificationDetails(
-            'substrack_reminders', 'Abonelik Hatirlatmalari',
-            channelDescription: 'Yaklasan abonelik odeme bildirimleri',
-            importance: Importance.high, priority: Priority.high,
-            icon: '@mipmap/ic_launcher',
-            color: Color(0xFF6C5CE7),
-          ),
-          iOS: DarwinNotificationDetails(presentAlert: true, presentBadge: true, presentSound: true),
+    await _plugin.zonedSchedule(
+      id,
+      'Abonelik Yenileniyor: $name',
+      '$daysBefore gun sonra $amount $currency odeme yapilacak.',
+      tzDate,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'substrack_reminders', 'Abonelik Hatirlatmalari',
+          channelDescription: 'Yaklasan abonelik odeme bildirimleri',
+          importance: Importance.high, priority: Priority.high,
+          icon: '@mipmap/launcher_icon',
+          color: Color(0xFF6C5CE7),
         ),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-      );
-    } catch (e) {
-      // Fallback to inexact scheduling if exact alarm permission is denied
-      await _plugin.zonedSchedule(
-        id,
-        'Abonelik Yenileniyor: $name',
-        '$daysBefore gun sonra $amount $currency odeme yapilacak.',
-        tzDate,
-        const NotificationDetails(
-          android: AndroidNotificationDetails(
-            'substrack_reminders', 'Abonelik Hatirlatmalari',
-            channelDescription: 'Yaklasan abonelik odeme bildirimleri',
-            importance: Importance.high, priority: Priority.high,
-            icon: '@mipmap/ic_launcher',
-            color: Color(0xFF6C5CE7),
-          ),
-          iOS: DarwinNotificationDetails(presentAlert: true, presentBadge: true, presentSound: true),
-        ),
-        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-      );
-    }
+        iOS: DarwinNotificationDetails(presentAlert: true, presentBadge: true, presentSound: true),
+      ),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+    );
   }
 
   static Future showTestNotification() async {
@@ -153,7 +126,7 @@ class NotificationService {
         android: AndroidNotificationDetails(
           'substrack_test', 'Test',
           importance: Importance.high, priority: Priority.high,
-          icon: '@mipmap/ic_launcher',
+          icon: '@mipmap/launcher_icon',
           color: Color(0xFF6C5CE7),
         ),
       ),
@@ -170,46 +143,24 @@ class NotificationService {
 
     final tzDate = tz.TZDateTime.from(nextMonth, tz.local);
 
-    try {
-      await _plugin.zonedSchedule(
-        99999, // Static ID for monthly summary
-        'Aylik Ozetiniz Hazir',
-        'Bu ayki toplam abonelik harcamalarinizi goruntuleyin.',
-        tzDate,
-        const NotificationDetails(
-          android: AndroidNotificationDetails(
-            'substrack_summary', 'Aylik Ozetler',
-            channelDescription: 'Aylik abonelik harcama ozetleri',
-            importance: Importance.defaultImportance, priority: Priority.defaultPriority,
-            icon: '@mipmap/ic_launcher',
-            color: Color(0xFF6C5CE7),
-          ),
-          iOS: DarwinNotificationDetails(presentAlert: true, presentBadge: true, presentSound: true),
+    await _plugin.zonedSchedule(
+      99999,
+      'Aylik Ozetiniz Hazir',
+      'Bu ayki toplam abonelik harcamalarinizi goruntuleyin.',
+      tzDate,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'substrack_summary', 'Aylik Ozetler',
+          channelDescription: 'Aylik abonelik harcama ozetleri',
+          importance: Importance.defaultImportance, priority: Priority.defaultPriority,
+          icon: '@mipmap/launcher_icon',
+          color: Color(0xFF6C5CE7),
         ),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-        matchDateTimeComponents: DateTimeComponents.dayOfMonthAndTime,
-      );
-    } catch (e) {
-      await _plugin.zonedSchedule(
-        99999,
-        'Aylik Ozetiniz Hazir',
-        'Bu ayki toplam abonelik harcamalarinizi goruntuleyin.',
-        tzDate,
-        const NotificationDetails(
-          android: AndroidNotificationDetails(
-            'substrack_summary', 'Aylik Ozetler',
-            channelDescription: 'Aylik abonelik harcama ozetleri',
-            importance: Importance.defaultImportance, priority: Priority.defaultPriority,
-            icon: '@mipmap/ic_launcher',
-            color: Color(0xFF6C5CE7),
-          ),
-          iOS: DarwinNotificationDetails(presentAlert: true, presentBadge: true, presentSound: true),
-        ),
-        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-        matchDateTimeComponents: DateTimeComponents.dayOfMonthAndTime,
-      );
-    }
+        iOS: DarwinNotificationDetails(presentAlert: true, presentBadge: true, presentSound: true),
+      ),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+      matchDateTimeComponents: DateTimeComponents.dayOfMonthAndTime,
+    );
   }
 }

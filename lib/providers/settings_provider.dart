@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/purchase_service.dart';
 
 class SettingsNotifier extends Notifier<String> {
   @override
@@ -17,40 +18,30 @@ final categoryFilterProvider = NotifierProvider<SettingsNotifier, String>(() {
 });
 
 class PremiumNotifier extends Notifier<bool> {
-  bool _isTemporary = false;
-  bool _isPermanent = false;
-
   @override
   bool build() {
-    _loadPermanentPremium();
-    return _isTemporary || _isPermanent;
+    // PurchaseService'ten gelen değişiklikleri dinle
+    _syncWithPurchaseService();
+    return PurchaseService.instance.isPremium.value;
   }
 
-  Future<void> _loadPermanentPremium() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      _isPermanent = prefs.getBool('is_permanent_premium') ?? false;
-      state = _isTemporary || _isPermanent;
-    } catch (_) {}
+  void _syncWithPurchaseService() {
+    PurchaseService.instance.isPremium.addListener(() {
+      state = PurchaseService.instance.isPremium.value;
+    });
   }
 
+  /// Google Play satın alma ile premium aktif et (kalıcı)
   Future<void> togglePermanentPremium(bool value) async {
-    _isPermanent = value;
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('is_permanent_premium', value);
-    } catch (_) {}
-    state = _isTemporary || _isPermanent;
+    await PurchaseService.instance.savePremium(value);
+    state = value;
   }
 
-  void setTemporaryPremium(bool value) {
-    _isTemporary = value;
-    state = _isTemporary || _isPermanent;
-  }
-
+  /// Geçici premium (reklam izleyerek — oturum süresince)
   void togglePremium(bool value) {
-    _isTemporary = value;
-    state = _isTemporary || _isPermanent;
+    if (!PurchaseService.instance.isPremium.value) {
+      state = value;
+    }
   }
 }
 

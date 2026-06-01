@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../constants/app_colors.dart';
 import '../services/ad_service.dart';
+import '../services/purchase_service.dart';
 import '../providers/settings_provider.dart';
 
 class ProUnlockScreen extends ConsumerStatefulWidget {
@@ -14,11 +15,69 @@ class ProUnlockScreen extends ConsumerStatefulWidget {
 
 class _ProUnlockScreenState extends ConsumerState<ProUnlockScreen> {
   bool _isLoadingAd = false;
+  String? _productPrice;
+  bool _isRestoring = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPrice();
+
+    // Satın alma servisini dinle
+    PurchaseService.instance.isPremium.addListener(_onPremiumChange);
+    PurchaseService.instance.isPurchasing.addListener(_onPurchasingChange);
+    PurchaseService.instance.errorMessage.addListener(_onErrorChange);
+  }
+
+  @override
+  void dispose() {
+    PurchaseService.instance.isPremium.removeListener(_onPremiumChange);
+    PurchaseService.instance.isPurchasing.removeListener(_onPurchasingChange);
+    PurchaseService.instance.errorMessage.removeListener(_onErrorChange);
+    super.dispose();
+  }
+
+  Future<void> _loadPrice() async {
+    final price = await PurchaseService.instance.fetchPrice();
+    if (mounted) setState(() => _productPrice = price);
+  }
+
+  void _onPremiumChange() {
+    if (PurchaseService.instance.isPremium.value && mounted) {
+      // Premium aktif oldu → provider'ı güncelle ve ekrandan çık
+      ref.read(isPremiumProvider.notifier).togglePermanentPremium(true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('🎉 SubsTrack Pro aktifleştirildi! Tüm özellikler açık.'),
+          backgroundColor: AppColors.activeGreen,
+          duration: Duration(seconds: 4),
+        ),
+      );
+      Navigator.of(context).pop();
+    }
+  }
+
+  void _onPurchasingChange() {
+    if (mounted) setState(() {});
+  }
+
+  void _onErrorChange() {
+    final error = PurchaseService.instance.errorMessage.value;
+    if (error != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error),
+          backgroundColor: AppColors.expensiveRed,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final watchCount = AdService.instance.rewardedWatchCount;
     final isDone = watchCount >= AdService.adsRequiredForPro;
+    final isPurchasing = PurchaseService.instance.isPurchasing.value;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -29,6 +88,19 @@ class _ProUnlockScreenState extends ConsumerState<ProUnlockScreen> {
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
           onPressed: () => Navigator.of(context).pop(),
         ),
+        actions: [
+          // Satın alma geri yükle
+          TextButton(
+            onPressed: _isRestoring ? null : _restorePurchases,
+            child: Text(
+              'Geri Yükle',
+              style: GoogleFonts.inter(
+                color: _isRestoring ? AppColors.textMuted : AppColors.accentPurple,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ],
       ),
       body: SafeArea(
         child: Padding(
@@ -47,7 +119,7 @@ class _ProUnlockScreenState extends ConsumerState<ProUnlockScreen> {
                 child: const Icon(Icons.workspace_premium_rounded, size: 64, color: Color(0xFFFFD700)),
               ),
               const SizedBox(height: 24),
-              
+
               // Titles
               Text(
                 'SubsTrack Pro\'ya Geç',
@@ -59,8 +131,8 @@ class _ProUnlockScreenState extends ConsumerState<ProUnlockScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
-               Text(
-                '3 kısa reklam izleyerek Pro özelliklerinin kilidini aç',
+              Text(
+                'Tek seferlik satın alma — Sonsuza kadar geçerli',
                 style: GoogleFonts.inter(
                   fontSize: 15,
                   color: AppColors.textSecondary,
@@ -68,59 +140,12 @@ class _ProUnlockScreenState extends ConsumerState<ProUnlockScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
-              Text(
-                '⚠️ Bu sadece geçici premiumdur, uygulamadan çıkış yaptığınızda premiumunuz iptal edilir.',
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  color: AppColors.warningAmber,
-                  fontWeight: FontWeight.w500,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 32),
 
-              // Progress Indicator
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(3, (index) {
-                  final isWatched = index < watchCount;
-                  return Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 8),
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: isWatched ? const Color(0xFFFFD700) : AppColors.surface2,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: isWatched ? const Color(0xFFFFD700) : AppColors.borderSubtle,
-                        width: 2,
-                      ),
-                    ),
-                    child: Center(
-                      child: isWatched
-                          ? const Icon(Icons.check_rounded, color: Colors.black, size: 24)
-                          : Text(
-                              '${index + 1}',
-                              style: GoogleFonts.inter(
-                                color: AppColors.textSecondary,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                    ),
-                  );
-                }),
+              // Divider
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Divider(color: Color(0x22FFFFFF)),
               ),
-              const SizedBox(height: 16),
-              Text(
-                '$watchCount / 3 reklam izlendi',
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-
-              const SizedBox(height: 40),
 
               // Features List
               Expanded(
@@ -136,23 +161,23 @@ class _ProUnlockScreenState extends ConsumerState<ProUnlockScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildFeatureRow('🚫', 'Reklamları Tamamen Kaldır'),
+                        _buildFeatureRow('🚫', 'Tüm Reklamları Kaldır'),
                         const SizedBox(height: 16),
-                        _buildFeatureRow('🎨', 'Özelleştirilebilir Ana Ekran Kartları'),
+                        _buildFeatureRow('📊', 'Akıllı Analiz & Grafikler'),
                         const SizedBox(height: 16),
-                        _buildFeatureRow('📈', 'Gelişmiş Kâr/Zarar Grafikleri'),
+                        _buildFeatureRow('🧠', 'Yapay Zeka Asistanı'),
                         const SizedBox(height: 16),
-                        _buildFeatureRow('🌗', 'Koyu / Açık Tema Seçimi'),
+                        _buildFeatureRow('📈', 'Gelişmiş Harcama Grafikleri'),
                         const SizedBox(height: 16),
-                        _buildFeatureRow('📊', 'CSV Dışa Aktar'),
+                        _buildFeatureRow('📋', 'CSV Dışa Aktar'),
                         const SizedBox(height: 16),
                         _buildFeatureRow('📅', 'Takvime Aktar'),
-                        const SizedBox(height: 16),
-                        _buildFeatureRow('🧠', 'Akıllı Analizler & Grafikler'),
                         const SizedBox(height: 16),
                         _buildFeatureRow('💸', 'Aylık Harcama Limiti Uyarısı'),
                         const SizedBox(height: 16),
                         _buildFeatureRow('💾', 'Yedekleme & Geri Yükleme'),
+                        const SizedBox(height: 16),
+                        _buildFeatureRow('🔁', 'Sonsuza Kadar Geçerli'),
                       ],
                     ),
                   ),
@@ -161,81 +186,103 @@ class _ProUnlockScreenState extends ConsumerState<ProUnlockScreen> {
 
               const SizedBox(height: 20),
 
-              // Big Action Button
-              if (isDone)
-                Container(
-                  width: double.infinity,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: AppColors.activeGreen,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Center(
-                    child: Text(
-                      '🎉 Pro Aktif!',
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
+              // ── Satın Al Butonu ──
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFFD700),
+                    foregroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
                     ),
+                    elevation: 4,
                   ),
-                )
-              else
+                  onPressed: isPurchasing ? null : _buyPremium,
+                  child: isPurchasing
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.black),
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.workspace_premium_rounded, size: 22),
+                            const SizedBox(width: 8),
+                            Text(
+                              _productPrice != null
+                                  ? 'Pro\'ya Geç — $_productPrice'
+                                  : 'Pro\'ya Geç',
+                              style: GoogleFonts.inter(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // ── Reklam İzleyerek Geçici Pro ──
+              if (!isDone)
                 SizedBox(
                   width: double.infinity,
-                  height: 56,
+                  height: 50,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.accentPurple,
-                      foregroundColor: AppColors.textPrimary,
+                      backgroundColor: AppColors.surface2,
+                      foregroundColor: AppColors.accentPurple,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(14),
+                        side: const BorderSide(color: AppColors.accentPurple),
                       ),
                       elevation: 0,
                     ),
                     onPressed: _isLoadingAd ? null : _watchAd,
                     child: _isLoadingAd
                         ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accentPurple),
                           )
                         : Text(
-                            'Reklam İzle ($watchCount/3)',
-                            style: GoogleFonts.inter(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            '📺 Reklam İzle ($watchCount/3) — Geçici Pro',
+                            style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600),
                           ),
                   ),
-                ),
-              const SizedBox(height: 16),
-              if (!isDone)
-                SizedBox(
+                )
+              else
+                Container(
                   width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.surface2,
-                      foregroundColor: const Color(0xFFFFD700),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        side: const BorderSide(color: Color(0xFFFFD700)),
-                      ),
-                      elevation: 0,
-                    ),
-                    onPressed: _buyPremium,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: AppColors.activeGreen.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.activeGreen),
+                  ),
+                  child: Center(
                     child: Text(
-                      'Sınırsız Premium Satın Al',
+                      '🎉 Geçici Pro Aktif (Bu oturum için)',
                       style: GoogleFonts.inter(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.activeGreen,
                       ),
                     ),
                   ),
                 ),
-              const SizedBox(height: 24),
+
+              const SizedBox(height: 12),
+              Text(
+                'Satın alma Google Play üzerinden güvenli şekilde gerçekleşir.\nİptal politikamız Google Play koşullarına tabidir.',
+                style: GoogleFonts.inter(fontSize: 11, color: AppColors.textMuted),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
             ],
           ),
         ),
@@ -258,28 +305,54 @@ class _ProUnlockScreenState extends ConsumerState<ProUnlockScreen> {
             ),
           ),
         ),
+        const Icon(Icons.check_circle_rounded, color: AppColors.activeGreen, size: 18),
       ],
     );
   }
 
+  /// Google Play satın alma başlat
+  void _buyPremium() async {
+    await PurchaseService.instance.buyPremium();
+  }
+
+  /// Önceki satın almaları geri yükle
+  Future<void> _restorePurchases() async {
+    setState(() => _isRestoring = true);
+    await PurchaseService.instance.restorePurchases();
+    await Future.delayed(const Duration(seconds: 2));
+    if (mounted) {
+      setState(() => _isRestoring = false);
+      final isPrem = PurchaseService.instance.isPremium.value;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isPrem
+              ? '✅ Premium geri yüklendi!'
+              : 'Bu hesapta aktif premium bulunamadı.'),
+          backgroundColor: isPrem ? AppColors.activeGreen : AppColors.textMuted,
+        ),
+      );
+    }
+  }
+
+  /// Reklam izleyerek geçici Pro
   void _watchAd() async {
     setState(() => _isLoadingAd = true);
-    
+
     await AdService.instance.showRewardedAd(
       onRewarded: () {
         setState(() {
           _isLoadingAd = false;
         });
-        
+
         if (AdService.instance.hasEnoughForPro) {
-          // Unlock PRO
           ref.read(isPremiumProvider.notifier).togglePremium(true);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('🎉 SubsTrack Pro aktifleştirildi!'),
+              content: Text('🎉 Geçici SubsTrack Pro aktifleştirildi! (Bu oturum için)'),
               backgroundColor: AppColors.activeGreen,
             ),
           );
+          Navigator.of(context).pop();
         }
       },
       onFailed: () {
@@ -292,25 +365,5 @@ class _ProUnlockScreenState extends ConsumerState<ProUnlockScreen> {
         );
       },
     );
-  }
-
-  Future<void> _buyPremium() async {
-    // Burada RevenueCat satın alma işlemi yapılacaktır.
-    // Lütfen main.dart içindeki Purchases.configure adımını tamamlayın.
-    try {
-      // Offerings offerings = await Purchases.getOfferings();
-      // if (offerings.current != null && offerings.current!.availablePackages.isNotEmpty) {
-      //   CustomerInfo customerInfo = await Purchases.purchasePackage(offerings.current!.availablePackages[0]);
-      //   if (customerInfo.entitlements.all["pro"]?.isActive == true) {
-      //     ref.read(isPremiumProvider.notifier).togglePremium(true);
-      //     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('🎉 Sınırsız Premium aktifleştirildi!')));
-      //   }
-      // }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Google Play entegrasyonu (RevenueCat) kodları eklendi. API Key girmeniz bekleniyor.')),
-      );
-    } catch (e) {
-      // print("Satın alma hatası: $e");
-    }
   }
 }
