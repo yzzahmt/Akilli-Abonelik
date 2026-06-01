@@ -26,6 +26,7 @@ import 'pro_unlock_screen.dart';
 import 'spending_chart_screen.dart';
 import 'investment_screen.dart';
 import 'ai_assistant_screen.dart';
+import 'piggy_bank_screen.dart';
 import '../services/activity_tracker.dart';
 import '../services/notification_service.dart' as import_notification;
 
